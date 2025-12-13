@@ -1,0 +1,20 @@
+name: "My Linux Dev Station"
+
+system:
+  packages:
+    - curl
+    - git
+    - vim
+    - tmux
+    - htop
+
+git:
+  repositories:
+    - url: "https://github.com/Dacraezy1/autorig"
+      path: "~/projects/tools/autorig"
+      branch: "main"
+
+dotfiles:
+  # Ensure these files exist relative to where you run autorig
+  # - source: "./vimrc"
+  #   target: "~/.vimrc"
