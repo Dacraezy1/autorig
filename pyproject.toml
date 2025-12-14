@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "autorig"
-version = "0.1.0"
+version = "0.2.0"
 description = "A declarative development environment bootstrapper"
 authors = [
   { name = "Dacraezy1", email = "younesaouzal18@gmail.com" },
@@ -16,6 +16,19 @@ dependencies = [
     "rich>=13.0.0",
     "pydantic>=2.0.0",
     "PyYAML>=6.0",
+    "jinja2>=3.0.0",
+    "watchdog>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black==23.1.0",
+    "isort==5.12.0",
+    "flake8==6.0.0",
+    "mypy==1.1.1",
+    "pre-commit==3.2.0",
+    "pytest>=7.0.0",
+    "ruff==0.1.6",
 ]
 
 [project.scripts]

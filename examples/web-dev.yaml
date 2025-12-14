@@ -1,0 +1,81 @@
+# Web Developer Setup
+name: "Web Development Environment"
+
+variables:
+  email: "web-dev@example.com"
+  username: "web_dev"
+  editor: "code"
+  node_version: "18"
+
+system:
+  packages:
+    # System utilities
+    - git
+    - curl
+    - wget
+    - htop
+    - tmux
+    - zsh
+    # Web development tools
+    - nodejs
+    - npm
+    - yarn
+    - docker
+    - docker-compose
+    # Text editors
+    - vim
+    - neovim
+    # Additional tools
+    - jq
+    - tree
+    - ncdu
+
+git:
+  repositories:
+    - url: "https://github.com/ohmyzsh/ohmyzsh.git"
+      path: "~/.oh-my-zsh"
+      branch: "master"
+    - url: "https://github.com/romkatv/powerlevel10k.git"
+      path: "~/.powerlevel10k"
+      branch: "master"
+
+dotfiles:
+  # Shell configuration
+  - source: "shell/.zshrc"
+    target: "~/.zshrc"
+  - source: "shell/.p10k.zsh"
+    target: "~/.p10k.zsh"
+  # Web development configuration
+  - source: "web/.nvmrc"
+    target: "~/.nvmrc"
+  - source: "web/.eslintrc.json"
+    target: "~/.eslintrc.json"
+  - source: "web/.prettierrc.json"
+    target: "~/.prettierrc.json"
+  # Editor configuration
+  - source: "editor/.vimrc"
+    target: "~/.vimrc"
+  - source: "editor/nvim/init.vim"
+    target: "~/.config/nvim/init.vim"
+  # Git configuration
+  - source: "git/.gitconfig.j2"
+    target: "~/.gitconfig"
+
+scripts:
+  # Install Oh My Zsh
+  - command: "sh -c \"$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended"
+    description: "Install Oh My Zsh"
+  # Install NVM (Node Version Manager)
+  - command: "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash"
+    description: "Install NVM"
+  # Install global Node packages
+  - command: "npm install -g typescript tslint prettier eslint"
+    description: "Install global Node.js packages"
+  # Install FZF
+  - command: "git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf && ~/.fzf/install"
+    description: "Install FZF"
+  # Configure Git
+  - command: "git config --global user.email \"${email}\""
+    description: "Configure Git email"
+  - command: "git config --global user.name \"${username}\""
+    description: "Configure Git username"

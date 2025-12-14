@@ -1,0 +1,82 @@
+# Example configuration with profiles
+name: "Development Environment with Profiles"
+
+variables:
+  email: "developer@example.com"
+  username: "dev"
+
+# Default system packages
+system:
+  packages:
+    - git
+    - vim
+    - curl
+
+# Default git repositories
+git:
+  repositories:
+    - url: "https://github.com/ohmyzsh/ohmyzsh.git"
+      path: "~/.oh-my-zsh"
+      branch: "master"
+
+# Default dotfiles
+dotfiles:
+  - source: ".vimrc"
+    target: "~/.vimrc"
+
+# Profile-specific configurations
+profiles:
+  # Configuration for Linux desktop systems
+  linux-x86_64-desktop:
+    system:
+      packages:
+        - git
+        - vim
+        - curl
+        - docker
+        - docker-compose
+        - code  # VS Code
+        - flameshot  # Screenshot tool
+    dotfiles:
+      - source: ".vimrc"
+        target: "~/.vimrc"
+      - source: "desktop/.Xresources"
+        target: "~/.Xresources"
+  
+  # Configuration for macOS systems
+  darwin-x86_64:
+    system:
+      packages:
+        - git
+        - vim
+        - curl
+        - rectangle  # Window management
+        - iterm2
+        - docker
+    dotfiles:
+      - source: "macos/.vimrc"
+        target: "~/.vimrc"
+      - source: "macos/.bash_profile"
+        target: "~/.bash_profile"
+  
+  # Configuration for WSL (Windows Subsystem for Linux)
+  linux-x86_64-wsl:
+    system:
+      packages:
+        - git
+        - vim
+        - curl
+        - docker.io
+    dotfiles:
+      - source: "wsl/.vimrc"
+        target: "~/.vimrc"
+      - source: "wsl/.wsl.conf"
+        target: "/etc/wsl.conf"
+    scripts:
+      - command: "echo '[wsl2]' | sudo tee -a /etc/wsl.conf"
+        description: "Configure WSL2 settings"
+        condition: "grep -q 'microsoft' /proc/version"
+
+scripts:
+  - command: "echo 'Configuration applied for profile-dependent setup'"
+    description: "Confirmation script"

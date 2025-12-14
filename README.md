@@ -4,11 +4,11 @@
 
 [![License](https://img.shields.io/github/license/Dacraezy1/autorig.svg)](https://github.com/Dacraezy1/autorig/blob/main/LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-informational.svg)](https://github.com/Dacraezy1/autorig)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-informational.svg)](https://github.com/Dacraezy1/autorig)
 
 ## ✨ Features
 
-- **📦 System Package Management**: Automatically detects your OS (Linux/macOS) and package manager (`apt`, `dnf`, `pacman`, `brew`) to install specified packages.
+- **📦 System Package Management**: Automatically detects your OS (Linux/macOS/Windows) and package manager (`apt`, `dnf`, `yum`, `pacman`, `zypper`, `xbps`, `apk`, `brew`, `port`, `winget`, `choco`, `scoop`) to install specified packages.
 - **🔗 Advanced Dotfile Management**: Safely manages your configuration files with advanced features:
   - **🎨 Jinja2 Templating**: Renders templates (`.j2`) with custom variables for dynamic configurations.
   - **💾 Automated Backups**: Creates full tarball snapshots of your dotfiles and provides easy restore capabilities.
@@ -21,10 +21,15 @@
 - **📝 Comprehensive Logging**: Detailed execution logs stored in `~/.autorig/logs/` for troubleshooting.
 - **👀 Watch Mode**: Automatically apply changes when you save your configuration file.
 - **🔐 Environment Integration**: Supports environment variable expansion (e.g., `${GITHUB_TOKEN}`) within configuration files.
+- **🔌 Plugin Architecture**: Extensible plugin system for custom functionality.
+- **🎯 Environment Detection**: Automatic environment detection and profile-based configurations.
+- **📊 Progress Indicators**: Visual progress indicators and detailed logging.
+- **🔧 Enhanced CLI**: More intuitive options and help text with `-n` (dry-run), `-v` (verbose), `-f` (force), and `-p` (profile) flags.
+- **🛡️ Improved Security**: Enhanced validation and security checks for commands and file paths.
 
 ## 📋 Requirements
 
-- **Operating Systems**: Linux or macOS
+- **Operating Systems**: Linux, macOS, or Windows
 - **Python Version**: 3.9 or higher
 - **Git**: Installed and available in your system PATH
 
@@ -58,6 +63,12 @@ Generate a default configuration file:
 autorig bootstrap
 ```
 
+Detect the current environment profile:
+
+```bash
+autorig detect
+```
+
 ### Main Commands
 
 #### Apply Configuration
@@ -67,10 +78,28 @@ Apply your configuration (install packages, link files, etc.):
 autorig apply rig.yaml
 ```
 
+Apply with a specific profile:
+
+```bash
+autorig apply rig.yaml --profile linux-x86_64-desktop
+```
+
 Preview actions without making changes:
 
 ```bash
 autorig apply rig.yaml --dry-run
+```
+
+More verbose output:
+
+```bash
+autorig apply rig.yaml --verbose
+```
+
+Force operations that might overwrite existing files:
+
+```bash
+autorig apply rig.yaml --force
 ```
 
 #### Sync Git Repositories
@@ -78,6 +107,12 @@ Push local changes in your configured git repositories to their remotes:
 
 ```bash
 autorig sync rig.yaml
+```
+
+With dry run:
+
+```bash
+autorig sync rig.yaml --dry-run
 ```
 
 #### Status & Inspection
@@ -131,6 +166,21 @@ Check if your YAML file is valid:
 
 ```bash
 autorig validate rig.yaml
+```
+
+#### Run Plugins
+Execute specific plugins:
+
+```bash
+autorig run-plugins rig.yaml myplugin
+```
+
+#### Profile Detection
+Detect and show the current system environment profile:
+
+```bash
+autorig detect
+autorig detect --verbose  # Show detailed environment information
 ```
 
 ## ⚙️ Configuration (`rig.yaml`)
@@ -288,6 +338,75 @@ scripts:
     description: "Configure Git email"
   - command: "git config --global user.name \"${git_user}\""
     description: "Configure Git username"
+```
+
+### Profile-Based Configuration Example
+```yaml
+name: "Development Environment with Profiles"
+
+variables:
+  email: "developer@example.com"
+  username: "dev"
+
+# Default system packages
+system:
+  packages:
+    - git
+    - vim
+    - curl
+
+# Profile-specific configurations
+profiles:
+  # Configuration for Linux desktop systems
+  linux-x86_64-desktop:
+    system:
+      packages:
+        - git
+        - vim
+        - curl
+        - docker
+        - docker-compose
+        - code  # VS Code
+        - flameshot  # Screenshot tool
+    dotfiles:
+      - source: "linux/.vimrc"
+        target: "~/.vimrc"
+      - source: "desktop/.Xresources"
+        target: "~/.Xresources"
+
+  # Configuration for macOS systems
+  darwin-x86_64:
+    system:
+      packages:
+        - git
+        - vim
+        - curl
+        - rectangle  # Window management
+        - iterm2
+        - docker
+    dotfiles:
+      - source: "macos/.vimrc"
+        target: "~/.vimrc"
+      - source: "macos/.bash_profile"
+        target: "~/.bash_profile"
+
+  # Configuration for WSL (Windows Subsystem for Linux)
+  linux-x86_64-wsl:
+    system:
+      packages:
+        - git
+        - vim
+        - curl
+        - docker.io
+    dotfiles:
+      - source: "wsl/.vimrc"
+        target: "~/.vimrc"
+      - source: "wsl/.wsl.conf"
+        target: "/etc/wsl.conf"
+
+scripts:
+  - command: "echo 'Configuration applied for profile-dependent setup'"
+    description: "Confirmation script"
 ```
 
 ## 🤝 Contributing

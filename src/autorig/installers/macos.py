@@ -5,12 +5,16 @@ from .base import SystemInstaller
 
 class MacOSInstaller(SystemInstaller):
     def install(self, packages: List[str]) -> bool:
-        if not shutil.which("brew"):
-            # Homebrew not found
+        # Check for package managers: homebrew, macports
+        if shutil.which("brew"):
+            # Homebrew: Popular macOS package manager
+            cmd = ["brew", "install"]
+        elif shutil.which("port"):
+            # MacPorts: Alternative macOS package manager
+            cmd = ["sudo", "port", "install"]
+        else:
             return False
-            
-        cmd = ["brew", "install"]
-        
+
         try:
             subprocess.run(cmd + packages, check=True)
             return True

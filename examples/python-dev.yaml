@@ -1,0 +1,72 @@
+# Python Developer Setup
+name: "Python Development Environment"
+
+variables:
+  email: "python-dev@example.com"
+  username: "python_dev"
+  editor: "nvim"
+  python_version: "3.10"
+  python_packages: ["black", "flake8", "isort", "mypy", "pytest", "pipenv"]
+
+system:
+  packages:
+    # System utilities
+    - git
+    - curl
+    - wget
+    - htop
+    - tmux
+    - zsh
+    # Python development
+    - python3
+    - python3-pip
+    - python3-venv
+    - python3-dev
+    # Additional tools
+    - nodejs
+    - docker
+
+git:
+  repositories:
+    - url: "https://github.com/ohmyzsh/ohmyzsh.git"
+      path: "~/.oh-my-zsh"
+      branch: "master"
+    - url: "https://github.com/romkatv/powerlevel10k.git"
+      path: "~/.powerlevel10k"
+      branch: "master"
+
+dotfiles:
+  # Shell configuration
+  - source: "shell/.zshrc"
+    target: "~/.zshrc"
+  - source: "shell/.p10k.zsh"
+    target: "~/.p10k.zsh"
+  # Python configuration
+  - source: "python/.python-version"
+    target: "~/.python-version"
+  - source: "python/.pylintrc"
+    target: "~/.pylintrc"
+  # Editor configuration
+  - source: "editor/.vimrc"
+    target: "~/.vimrc"
+  - source: "editor/nvim/init.vim"
+    target: "~/.config/nvim/init.vim"
+  # Git configuration
+  - source: "git/.gitconfig.j2"
+    target: "~/.gitconfig"
+
+scripts:
+  # Install Oh My Zsh
+  - command: "sh -c \"$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended"
+    description: "Install Oh My Zsh"
+  # Install FZF
+  - command: "git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf && ~/.fzf/install"
+    description: "Install FZF"
+  # Install Python development tools
+  - command: "pip3 install --user black flake8 isort mypy pytest pipenv"
+    description: "Install Python development tools"
+  # Configure Git
+  - command: "git config --global user.email \"${email}\""
+    description: "Configure Git email"
+  - command: "git config --global user.name \"${username}\""
+    description: "Configure Git username"

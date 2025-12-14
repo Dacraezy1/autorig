@@ -1,0 +1,45 @@
+# Basic Developer Setup
+name: "Basic Developer Environment"
+
+variables:
+  email: "developer@example.com"
+  username: "dev"
+
+system:
+  packages:
+    # Essential tools
+    - git
+    - vim
+    - curl
+    - wget
+    - htop
+    # Development tools
+    - nodejs
+    - python3
+    - python3-pip
+    - docker
+
+git:
+  repositories:
+    - url: "https://github.com/ohmyzsh/ohmyzsh.git"
+      path: "~/.oh-my-zsh"
+      branch: "master"
+
+dotfiles:
+  # Shell configuration
+  - source: "shell/.bashrc"
+    target: "~/.bashrc"
+  - source: "shell/.zshrc"
+    target: "~/.zshrc"
+  # Editor configuration
+  - source: "editor/.vimrc"
+    target: "~/.vimrc"
+  # Git configuration
+  - source: "git/.gitconfig.j2"
+    target: "~/.gitconfig"
+
+scripts:
+  # Install Oh My Zsh
+  - command: "sh -c \"$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended"
+    description: "Install Oh My Zsh"
+    condition: "test ! -d ~/.oh-my-zsh"

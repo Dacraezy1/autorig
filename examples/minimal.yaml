@@ -1,0 +1,19 @@
+# Minimal Setup
+name: "Minimal Configuration"
+
+variables:
+  email: "minimal@example.com"
+
+system:
+  packages:
+    - git
+    - vim
+    - curl
+
+dotfiles:
+  - source: ".vimrc"
+    target: "~/.vimrc"
+
+scripts:
+  - command: "echo 'Minimal setup completed'"
+    description: "Confirmation script"
