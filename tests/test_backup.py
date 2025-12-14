@@ -1,9 +1,7 @@
-import pytest
 import os
 import tarfile
-from pathlib import Path
 from autorig.backup import BackupManager
-from autorig.config import RigConfig, Dotfile
+from autorig.config import Dotfile
 
 
 # Mock RigConfig to avoid loading full config

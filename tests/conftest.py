@@ -1,7 +1,5 @@
 import pytest
 import yaml
-import os
-from pathlib import Path
 
 
 @pytest.fixture

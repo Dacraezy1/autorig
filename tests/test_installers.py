@@ -1,5 +1,4 @@
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from autorig.installers.linux import LinuxInstaller
 from autorig.installers.macos import MacOSInstaller
 

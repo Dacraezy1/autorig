@@ -1,5 +1,3 @@
-import pytest
-import sys
 from unittest.mock import patch, MagicMock
 from src.autorig.installers.base import get_system_installer
 from src.autorig.installers.windows import WindowsInstaller
@@ -25,6 +23,7 @@ def test_windows_installer_install_with_winget():
             assert mock_run.called
             args, kwargs = mock_run.call_args
             assert args[0][:3] == ["winget", "install", "--silent"]
+            assert result is True
 
 
 def test_windows_installer_install_with_choco():
@@ -42,6 +41,7 @@ def test_windows_installer_install_with_choco():
             assert mock_run.called
             args, kwargs = mock_run.call_args
             assert args[0][:2] == ["choco", "install"]
+            assert result is True
 
 
 def test_windows_installer_install_with_scoop():
@@ -63,6 +63,7 @@ def test_windows_installer_install_with_scoop():
             assert mock_run.called
             args, kwargs = mock_run.call_args
             assert args[0][:2] == ["scoop", "install"]
+            assert result is True
 
 
 def test_windows_installer_no_package_manager():
