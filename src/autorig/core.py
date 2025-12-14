@@ -7,6 +7,7 @@ from rich.console import Console
 from .config import RigConfig
 from .installers.base import get_system_installer
 from .backup import BackupManager
+from .templating import TemplateRenderer
 
 console = Console()
 
@@ -17,6 +18,7 @@ class AutoRig:
         self.installer = get_system_installer()
         self.dry_run = dry_run
         self.backup_manager = BackupManager(self.config)
+        self.renderer = None
 
     def apply(self):
         mode = "[DRY RUN] " if self.dry_run else ""
@@ -84,6 +86,7 @@ class AutoRig:
 
         console.print(f"[bold]Linking {len(dotfiles)} dotfiles...[/bold]")
         config_dir = Path(self.config_path).parent.absolute()
+        self.renderer = TemplateRenderer(config_dir)
         
         for df in dotfiles:
             # Resolve source relative to config file location
@@ -112,6 +115,17 @@ class AutoRig:
             
             if self.dry_run:
                 console.print(f"[yellow]DRY RUN: Would link {target} -> {source}[/yellow]")
+                continue
+
+            # Check for template
+            if source.suffix == '.j2':
+                try:
+                    # Render relative path from config_dir
+                    rel_source = source.relative_to(config_dir)
+                    self.renderer.render(str(rel_source), self.config.variables, target)
+                    console.print(f"[green]Rendered {target} from {source}[/green]")
+                except Exception as e:
+                    console.print(f"[red]Failed to render {target}: {e}[/red]")
                 continue
 
             try:
@@ -174,3 +188,7 @@ class AutoRig:
     def backup(self):
         """Create a full snapshot of the current target files."""
         self.backup_manager.create_snapshot()
+
+    def restore(self, snapshot_path: str):
+        """Restore files from a backup snapshot."""
+        self.backup_manager.restore_snapshot(snapshot_path)

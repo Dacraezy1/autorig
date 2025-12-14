@@ -33,3 +33,15 @@ class BackupManager:
         
         console.print(f"[green]Backed up {count} files to {filepath}[/green]")
         return filepath
+
+    def restore_snapshot(self, snapshot_path: str):
+        path = Path(snapshot_path)
+        if not path.exists():
+            raise FileNotFoundError(f"Snapshot not found: {path}")
+            
+        console.print(f"[bold]Restoring from snapshot:[/bold] {path}")
+        with tarfile.open(path, "r:gz") as tar:
+            # Extract relative paths starting from root to restore absolute locations
+            tar.extractall(path="/")
+            
+        console.print(f"[green]Restored files from {path}[/green]")

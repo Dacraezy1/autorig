@@ -59,6 +59,21 @@ def backup(config: str = typer.Argument(..., help="Path to rig.yaml config file"
         console.print(f"[bold red]Error creating backup:[/bold red] {e}")
         raise typer.Exit(code=1)
 
+@app.command()
+def restore(
+    config: str = typer.Argument(..., help="Path to rig.yaml config file"),
+    snapshot: str = typer.Argument(..., help="Path to the backup tarball to restore")
+):
+    """
+    Restore dotfiles from a backup snapshot.
+    """
+    try:
+        rig = AutoRig(config)
+        rig.restore(snapshot)
+    except Exception as e:
+        console.print(f"[bold red]Error restoring backup:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
 def main():
     app()
 

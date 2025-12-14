@@ -22,6 +22,7 @@ setup(
         "rich>=13.0.0",
         "pyyaml>=6.0",
         "pydantic>=2.0.0",
+        "jinja2>=3.0.0",
     ],
     entry_points={
         "console_scripts": [

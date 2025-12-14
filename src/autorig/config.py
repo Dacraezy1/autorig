@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 import yaml
 
@@ -28,6 +28,7 @@ class RigConfig(BaseModel):
     git: GitConfig = GitConfig()
     dotfiles: List[Dotfile] = []
     scripts: List[Script] = []
+    variables: Dict[str, Any] = {}
 
     @classmethod
     def from_yaml(cls, path: str) -> "RigConfig":
