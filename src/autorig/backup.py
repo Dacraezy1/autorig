@@ -42,7 +42,12 @@ class BackupManager:
         console.print(f"[bold]Restoring from snapshot:[/bold] {path}")
         with tarfile.open(path, "r:gz") as tar:
             # Extract relative paths starting from root to restore absolute locations
-            tar.extractall(path="/")
+            kwargs = {}
+            import sys
+            if sys.version_info >= (3, 12):
+                kwargs['filter'] = 'fully_trusted'
+            
+            tar.extractall(path="/", **kwargs)
             
         console.print(f"[green]Restored files from {path}[/green]")
 

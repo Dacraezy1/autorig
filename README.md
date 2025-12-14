@@ -17,7 +17,8 @@
 - **🧹 Clean Mode**: Easily remove symlinks created by the tool.
 - **📝 Logging**: Detailed execution logs stored in `~/.autorig/logs/`.
 - **👀 Watch Mode**: Automatically apply changes when you save `rig.yaml`.
-- **🔐 Secrets**: Support for environment variables in config (e.g., `${GITHUB_TOKEN}`).
+- **🔐 Secrets**: Supports environment variable expansion (e.g., `${GITHUB_TOKEN}`) within the configuration file, processed via `os.path.expandvars`.
+- **✅ Robust Testing**: Features a comprehensive suite of unit tests ensuring reliability and maintainability.
 
 ## Requirements
 

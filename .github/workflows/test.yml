@@ -18,5 +18,4 @@ jobs:
         pip install pytest
     - name: Run tests
       run: |
-        # pytest # Uncomment when tests are added
-        echo "Tests passed (placeholder)"
+        pytest
