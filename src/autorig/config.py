@@ -69,10 +69,6 @@ class Dotfile(BaseModel):
         # Validate path does not contain dangerous patterns
         if '../' in v or '..\\' in v:
             raise ValueError(f'Path traversal detected in dotfile path: {v}')
-        # Additional path validation
-        expanded_path = os.path.expanduser(v)
-        if not expanded_path.startswith(('/', '~', os.path.expanduser('~'), '.')):
-            raise ValueError(f'Invalid path format: {v}')
         return v
 
 

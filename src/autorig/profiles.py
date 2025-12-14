@@ -132,36 +132,47 @@ class EnvironmentDetector:
 def load_profile_config(config_path: str, profile: Optional[str] = None) -> Dict[str, Any]:
     """
     Load a configuration file with profile-specific overrides.
-    
+
     If a profile is specified or auto-detected, it will try to load:
     - rig.yaml (base config)
     - rig-{profile}.yaml (profile-specific config)
     - rig.local.yaml (local overrides, not committed)
-    
+
     Profile-specific config overrides base config.
     """
     detector = EnvironmentDetector()
-    
+
     # Determine profile to use
     if not profile:
         profile = detector.get_profile_name()
-    
+
     # List of config files to try, in order of precedence (last wins)
     config_files = [
         config_path,  # Base config
         config_path.replace('.yaml', f'-{profile}.yaml'),  # Profile-specific
         config_path.replace('.yaml', '.local.yaml'),  # Local overrides
     ]
-    
+
     final_config = {}
-    
+
     for config_file in config_files:
         config_path_obj = Path(config_file)
         if config_path_obj.exists():
-            import yaml
             with open(config_path_obj, 'r') as f:
-                config_data = yaml.safe_load(f) or {}
-            
+                content = f.read()
+
+            # Expand environment variables in the content
+            try:
+                content = os.path.expandvars(content)
+            except Exception as e:
+                raise ValueError(f"Error expanding environment variables in config: {e}")
+
+            import yaml
+            try:
+                config_data = yaml.safe_load(content) or {}
+            except yaml.YAMLError as e:
+                raise ValueError(f"Invalid YAML in configuration file: {e}")
+
             # Apply profile-specific sections if they exist
             if profile and 'profiles' in config_data and profile in config_data['profiles']:
                 profile_config = config_data['profiles'][profile]
@@ -170,7 +181,7 @@ def load_profile_config(config_path: str, profile: Optional[str] = None) -> Dict
             else:
                 # Regular config merge
                 final_config = _deep_merge(final_config, config_data)
-    
+
     return final_config
 
 
