@@ -5,7 +5,16 @@
 ![License](https://img.shields.io/github/license/Dacraezy1/autorig)
 ![Python](https://img.shields.io/badge/python-3.9+-blue.svg)
 
-## 🚀 Features
+## 📑 Table of Contents
+
+- [Features](#-features)
+- [Installation](#-installation)
+- [Usage](#-usage)
+- [Configuration Reference](#-configuration-reference)
+- [Contributing](#-contributing)
+- [License](#-license)
+
+## � Features
 
 *   **Declarative Configuration:** Define your tools, packages, and repos in a simple `rig.yaml` file.
 *   **Multi-Distro Support:** Smart detection for `apt`, `dnf`, `pacman`, and `yay`.
@@ -18,6 +27,8 @@
 ```bash
 git clone https://github.com/Dacraezy1/autorig.git
 cd autorig
+python3 -m venv venv
+source venv/bin/activate
 pip install -e .
 ```
 
