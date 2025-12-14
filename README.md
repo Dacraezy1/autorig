@@ -13,7 +13,9 @@
 - **🐙 Git Operations**: Clones repositories if missing, or pulls updates if they exist.
 - **⚡ Custom Scripts**: Execute post-install shell commands (e.g., installing plugins, setting shell defaults).
 - **🛡️ Dry Run Mode**: Preview actions without making any changes to your system.
+- **🔍 Diff & Status**: Inspect changes and current state before applying.
 - **🧹 Clean Mode**: Easily remove symlinks created by the tool.
+- **📝 Logging**: Detailed execution logs stored in `~/.autorig/logs/`.
 
 ## Installation
 
