@@ -4,8 +4,10 @@
 
 ## Features
 
-- **📦 System Packages**: Automatically detects your Linux package manager (`apt`, `dnf`, `pacman`) and installs specified packages.
+- **📦 System Packages**: Automatically detects your OS (Linux/macOS) and package manager (`apt`, `dnf`, `pacman`, `brew`) to install specified packages.
 - **🔗 Dotfile Management**: Safely symlinks configuration files.
+  - **🎨 Templating**: Renders Jinja2 templates (`.j2`) with custom variables.
+  - **💾 Snapshots**: Create full tarball backups of your dotfiles and restore them later.
   - Automatically backs up existing files with timestamps (e.g., `.bashrc.20231027-103000.bak`).
   - Prevents overwriting unless necessary.
 - **🐙 Git Operations**: Clones repositories if missing, or pulls updates if they exist.

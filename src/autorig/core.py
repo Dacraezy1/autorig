@@ -192,3 +192,40 @@ class AutoRig:
     def restore(self, snapshot_path: str):
         """Restore files from a backup snapshot."""
         self.backup_manager.restore_snapshot(snapshot_path)
+
+    def status(self):
+        console.print(f"[bold]Configuration Status: {self.config.name}[/bold]")
+        
+        config_dir = Path(self.config_path).parent.absolute()
+        
+        # Dotfiles
+        if self.config.dotfiles:
+            console.print(f"\n[bold]Dotfiles:[/bold]")
+            for df in self.config.dotfiles:
+                target = Path(os.path.expanduser(df.target))
+                source = (config_dir / os.path.expanduser(df.source)).resolve()
+                
+                if source.suffix == '.j2':
+                    if target.exists() and not target.is_symlink():
+                        console.print(f"  [green]✓[/green] {df.target} (Template Rendered)")
+                    elif target.exists():
+                        console.print(f"  [yellow]![/yellow] {df.target} (Type Mismatch)")
+                    else:
+                        console.print(f"  [red]✗[/red] {df.target} (Missing)")
+                else:
+                    if target.is_symlink() and target.resolve() == source:
+                        console.print(f"  [green]✓[/green] {df.target}")
+                    elif target.exists():
+                        console.print(f"  [yellow]![/yellow] {df.target} (File/Link Mismatch)")
+                    else:
+                        console.print(f"  [red]✗[/red] {df.target} (Missing)")
+
+        # Git
+        if self.config.git.repositories:
+            console.print(f"\n[bold]Repositories:[/bold]")
+            for repo in self.config.git.repositories:
+                path = Path(os.path.expanduser(repo.path))
+                if path.exists() and (path / ".git").exists():
+                    console.print(f"  [green]✓[/green] {repo.path}")
+                else:
+                    console.print(f"  [red]✗[/red] {repo.path} (Missing)")
