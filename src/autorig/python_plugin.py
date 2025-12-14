@@ -19,7 +19,7 @@ class PythonDevPlugin(Plugin):
     
     def apply(self, config: RigConfig, dry_run: bool = False, verbose: bool = False) -> bool:
         if verbose:
-            print(f"Applying Python development environment setup...")
+            print("Applying Python development environment setup...")
         
         # Look for Python-specific configuration in the variables
         python_version = config.variables.get('python_version', '3.9')

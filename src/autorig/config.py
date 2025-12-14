@@ -2,7 +2,6 @@ from typing import List, Optional, Dict, Any
 import os
 import re
 from pydantic import BaseModel, field_validator, model_validator
-import yaml
 from .profiles import load_profile_config
 
 

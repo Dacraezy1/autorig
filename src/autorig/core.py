@@ -5,7 +5,7 @@ import difflib
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 from rich.console import Console
 from .config import RigConfig
 from .installers.base import get_system_installer
@@ -359,7 +359,7 @@ class AutoRig:
         
         # Dotfiles
         if self.config.dotfiles:
-            console.print(f"\n[bold]Dotfiles:[/bold]")
+            console.print("\n[bold]Dotfiles:[/bold]")
             for df in self.config.dotfiles:
                 target = Path(os.path.expanduser(df.target))
                 source = (config_dir / os.path.expanduser(df.source)).resolve()
@@ -381,7 +381,7 @@ class AutoRig:
 
         # Git
         if self.config.git.repositories:
-            console.print(f"\n[bold]Repositories:[/bold]")
+            console.print("\n[bold]Repositories:[/bold]")
             for repo in self.config.git.repositories:
                 path = Path(os.path.expanduser(repo.path))
                 if path.exists() and (path / ".git").exists():
@@ -458,7 +458,7 @@ class AutoRig:
                         return
                     self.last_run = time.time()
                     
-                    console.print(f"\n[bold yellow]Configuration changed. Applying...[/bold yellow]")
+                    console.print("\n[bold yellow]Configuration changed. Applying...[/bold yellow]")
                     # Reload config
                     try:
                         self.rigger.config = RigConfig.from_yaml(self.rigger.config_path)
