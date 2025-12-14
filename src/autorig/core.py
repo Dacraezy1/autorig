@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 import difflib
+import re
 from datetime import datetime
 from pathlib import Path
 from rich.console import Console
@@ -16,7 +17,13 @@ console = Console()
 class AutoRig:
     def __init__(self, config_path: str, dry_run: bool = False):
         self.config_path = config_path
-        self.config = RigConfig.from_yaml(config_path)
+        try:
+            self.config = RigConfig.from_yaml(config_path)
+        except Exception as e:
+            console.print(f"[bold red]Configuration validation error:[/bold red] {e}")
+            self.logger.error(f"Configuration validation failed: {e}")
+            raise
+
         self.installer = get_system_installer()
         self.dry_run = dry_run
         self.backup_manager = BackupManager(self.config)
@@ -158,20 +165,49 @@ class AutoRig:
         for script in scripts:
             desc = script.description or script.command
             console.print(f"Running: {desc}")
-            
+
+            # Validate script command before execution for security
+            if not self._is_safe_command(script.command):
+                console.print(f"[red]✗ Unsafe command blocked: {script.command}[/red]")
+                self.logger.error(f"Unsafe command blocked: {script.command}")
+                continue
+
             cwd = os.path.expanduser(script.cwd) if script.cwd else None
-            
+
             if self.dry_run:
                 console.print(f"[yellow]DRY RUN: Would execute: {script.command}[/yellow]")
                 continue
-            
+
             try:
-                subprocess.run(script.command, shell=True, check=True, cwd=cwd)
+                result = subprocess.run(script.command, shell=True, check=True, cwd=cwd, capture_output=True, text=True)
                 console.print(f"[green]✓ Completed: {desc}[/green]")
+                if result.stdout:
+                    console.print(f"[dim]Output: {result.stdout[:200]}...[/dim]" if len(result.stdout) > 200 else f"[dim]Output: {result.stdout}[/dim]")
                 self.logger.info(f"Script completed: {desc}")
             except subprocess.CalledProcessError as e:
                 console.print(f"[red]✗ Failed: {desc} ({e})[/red]")
+                if e.stderr:
+                    console.print(f"[red]Error: {e.stderr}[/red]")
                 self.logger.error(f"Script failed: {desc} - {e}")
+
+    def _is_safe_command(self, command: str) -> bool:
+        """
+        Perform basic security checks on a command before execution
+        """
+        # Check for dangerous patterns that could indicate command injection
+        dangerous_patterns = [
+            r'\|\|',  # command chaining
+            r'&&',    # command chaining
+            r';',     # command separation
+            r'\$\(\(', # arithmetic expansion
+            r'`',     # command substitution
+            r'\$\(.*\)', # command substitution
+        ]
+
+        for pattern in dangerous_patterns:
+            if re.search(pattern, command):
+                return False
+        return True
 
     def clean(self):
         mode = "[DRY RUN] " if self.dry_run else ""

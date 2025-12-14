@@ -17,7 +17,10 @@ def get_system_installer() -> SystemInstaller:
     if system == "linux":
         from .linux import LinuxInstaller
         return LinuxInstaller()
-    if system == "darwin":
+    elif system == "darwin":
         from .macos import MacOSInstaller
         return MacOSInstaller()
+    elif system == "windows":
+        from .windows import WindowsInstaller
+        return WindowsInstaller()
     return NoOpInstaller()
