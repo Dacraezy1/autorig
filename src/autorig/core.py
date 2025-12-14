@@ -139,3 +139,32 @@ class AutoRig:
                 console.print(f"[green]✓ Completed: {desc}[/green]")
             except subprocess.CalledProcessError as e:
                 console.print(f"[red]✗ Failed: {desc} ({e})[/red]")
+
+    def clean(self):
+        mode = "[DRY RUN] " if self.dry_run else ""
+        console.print(f"[bold red]{mode}Cleaning configuration: {self.config.name}[/bold red]")
+        
+        dotfiles = self.config.dotfiles
+        if not dotfiles:
+            return
+
+        config_dir = Path(self.config_path).parent.absolute()
+        
+        for df in dotfiles:
+            target = Path(os.path.expanduser(df.target))
+            # Resolve what the link source should be
+            source = (config_dir / os.path.expanduser(df.source)).resolve()
+            
+            if target.is_symlink():
+                try:
+                    # Check if the symlink actually points to our source
+                    if target.resolve() == source:
+                        console.print(f"Removing symlink: {target}")
+                        if not self.dry_run:
+                            target.unlink()
+                    else:
+                        console.print(f"[yellow]Skipping {target}: Points elsewhere[/yellow]")
+                except FileNotFoundError:
+                    console.print(f"Removing broken symlink: {target}")
+                    if not self.dry_run:
+                        target.unlink()

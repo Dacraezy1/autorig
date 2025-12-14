@@ -21,6 +21,21 @@ def apply(
         raise typer.Exit(code=1)
 
 @app.command()
+def clean(
+    config: str = typer.Argument(..., help="Path to rig.yaml config file"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Simulate actions without making changes")
+):
+    """
+    Remove symlinks created by the configuration.
+    """
+    try:
+        rig = AutoRig(config, dry_run=dry_run)
+        rig.clean()
+    except Exception as e:
+        console.print(f"[bold red]Error:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+@app.command()
 def validate(config: str = typer.Argument(..., help="Path to rig.yaml config file")):
     """
     Validate a rig configuration file.
