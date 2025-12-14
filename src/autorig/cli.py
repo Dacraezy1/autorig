@@ -86,6 +86,18 @@ def status(config: str = typer.Argument(..., help="Path to rig.yaml config file"
         console.print(f"[bold red]Error checking status:[/bold red] {e}")
         raise typer.Exit(code=1)
 
+@app.command()
+def diff(config: str = typer.Argument(..., help="Path to rig.yaml config file")):
+    """
+    Show differences between current system state and configuration.
+    """
+    try:
+        rig = AutoRig(config)
+        rig.diff()
+    except Exception as e:
+        console.print(f"[bold red]Error checking diff:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
 def main():
     app()
 

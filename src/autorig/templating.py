@@ -10,3 +10,7 @@ class TemplateRenderer:
         template = self.env.get_template(template_name)
         content = template.render(**context)
         output_path.write_text(content)
+
+    def render_string(self, template_name: str, context: Dict[str, Any]) -> str:
+        template = self.env.get_template(template_name)
+        return template.render(**context)

@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import difflib
 from datetime import datetime
 from pathlib import Path
 from rich.console import Console
@@ -8,6 +9,7 @@ from .config import RigConfig
 from .installers.base import get_system_installer
 from .backup import BackupManager
 from .templating import TemplateRenderer
+from .logger import setup_logging
 
 console = Console()
 
@@ -19,10 +21,12 @@ class AutoRig:
         self.dry_run = dry_run
         self.backup_manager = BackupManager(self.config)
         self.renderer = None
+        self.logger = setup_logging()
 
     def apply(self):
         mode = "[DRY RUN] " if self.dry_run else ""
         console.print(f"[bold green]{mode}Applying configuration: {self.config.name}[/bold green]")
+        self.logger.info(f"Starting apply: {self.config.name} (dry_run={self.dry_run})")
         
         self._install_system_packages()
         self._process_git_repos()
@@ -41,8 +45,10 @@ class AutoRig:
 
             if self.installer.install(packages):
                 console.print("[green]System packages installed successfully.[/green]")
+                self.logger.info(f"Installed packages: {packages}")
             else:
                 console.print("[red]Failed to install some system packages.[/red]")
+                self.logger.error("Package installation failed")
 
     def _process_git_repos(self):
         repos = self.config.git.repositories
@@ -61,8 +67,10 @@ class AutoRig:
                 try:
                     subprocess.run(["git", "-C", str(target_path), "pull"], check=True)
                     console.print(f"[green]Updated {repo.url}[/green]")
+                    self.logger.info(f"Updated git repo: {repo.url}")
                 except subprocess.CalledProcessError as e:
                     console.print(f"[red]Failed to update {repo.url}: {e}[/red]")
+                    self.logger.error(f"Failed to update {repo.url}: {e}")
                 continue
             
             console.print(f"Cloning {repo.url} to {repo.path}...")
@@ -76,8 +84,10 @@ class AutoRig:
                     check=True
                 )
                 console.print(f"[green]Cloned {repo.url}[/green]")
+                self.logger.info(f"Cloned git repo: {repo.url}")
             except subprocess.CalledProcessError as e:
                 console.print(f"[red]Failed to clone {repo.url}: {e}[/red]")
+                self.logger.error(f"Failed to clone {repo.url}: {e}")
 
     def _link_dotfiles(self):
         dotfiles = self.config.dotfiles
@@ -102,6 +112,7 @@ class AutoRig:
                 timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
                 backup = Path(f"{target}.{timestamp}.bak")
                 console.print(f"[yellow]Backing up existing {target} to {backup}[/yellow]")
+                self.logger.info(f"Backing up {target} to {backup}")
                 
                 if not self.dry_run:
                     if target.is_symlink():
@@ -124,15 +135,19 @@ class AutoRig:
                     rel_source = source.relative_to(config_dir)
                     self.renderer.render(str(rel_source), self.config.variables, target)
                     console.print(f"[green]Rendered {target} from {source}[/green]")
+                    self.logger.info(f"Rendered template {source} to {target}")
                 except Exception as e:
                     console.print(f"[red]Failed to render {target}: {e}[/red]")
+                    self.logger.error(f"Template render failed for {target}: {e}")
                 continue
 
             try:
                 target.symlink_to(source)
                 console.print(f"[green]Linked {target} -> {source}[/green]")
+                self.logger.info(f"Linked {target} -> {source}")
             except Exception as e:
                 console.print(f"[red]Failed to link {target}: {e}[/red]")
+                self.logger.error(f"Link failed for {target}: {e}")
 
     def _run_scripts(self):
         scripts = self.config.scripts
@@ -153,8 +168,10 @@ class AutoRig:
             try:
                 subprocess.run(script.command, shell=True, check=True, cwd=cwd)
                 console.print(f"[green]✓ Completed: {desc}[/green]")
+                self.logger.info(f"Script completed: {desc}")
             except subprocess.CalledProcessError as e:
                 console.print(f"[red]✗ Failed: {desc} ({e})[/red]")
+                self.logger.error(f"Script failed: {desc} - {e}")
 
     def clean(self):
         mode = "[DRY RUN] " if self.dry_run else ""
@@ -229,3 +246,45 @@ class AutoRig:
                     console.print(f"  [green]✓[/green] {repo.path}")
                 else:
                     console.print(f"  [red]✗[/red] {repo.path} (Missing)")
+
+    def diff(self):
+        console.print(f"[bold]Configuration Diff: {self.config.name}[/bold]")
+        config_dir = Path(self.config_path).parent.absolute()
+        self.renderer = TemplateRenderer(config_dir)
+
+        for df in self.config.dotfiles:
+            target = Path(os.path.expanduser(df.target))
+            source = (config_dir / os.path.expanduser(df.source)).resolve()
+            
+            if not target.exists():
+                console.print(f"\n[bold green]New File:[/bold green] {target}")
+                continue
+            
+            try:
+                # Get source content
+                if source.suffix == '.j2':
+                    rel_source = source.relative_to(config_dir)
+                    source_content = self.renderer.render_string(str(rel_source), self.config.variables).splitlines()
+                else:
+                    source_content = source.read_text().splitlines()
+                
+                # Get target content
+                target_content = target.read_text().splitlines()
+                
+                # Generate diff
+                diff_lines = list(difflib.unified_diff(
+                    target_content,
+                    source_content,
+                    fromfile=str(target),
+                    tofile=str(source),
+                    lineterm=""
+                ))
+                
+                if diff_lines:
+                    console.print(f"\n[bold yellow]Changes for {target}:[/bold yellow]")
+                    for line in diff_lines:
+                        color = "red" if line.startswith("-") else "green" if line.startswith("+") else "white"
+                        console.print(f"[{color}]{line}[/{color}]")
+            
+            except Exception as e:
+                console.print(f"[red]Could not diff {target}: {e}[/red]")
