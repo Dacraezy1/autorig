@@ -16,8 +16,16 @@ from .plugins import plugin_manager
 
 console = Console()
 
+
 class AutoRig:
-    def __init__(self, config_path: str, dry_run: bool = False, verbose: bool = False, force: bool = False, profile: Optional[str] = None):
+    def __init__(
+        self,
+        config_path: str,
+        dry_run: bool = False,
+        verbose: bool = False,
+        force: bool = False,
+        profile: Optional[str] = None,
+    ):
         self.config_path = config_path
         try:
             self.config = RigConfig.from_yaml(config_path, profile)
@@ -28,7 +36,9 @@ class AutoRig:
             console.print(f"[bold red]Configuration validation error:[/bold red] {e}")
             raise
         except Exception as e:
-            console.print(f"[bold red]Unexpected error loading configuration:[/bold red] {e}")
+            console.print(
+                f"[bold red]Unexpected error loading configuration:[/bold red] {e}"
+            )
             raise
 
         self.installer = get_system_installer()
@@ -41,11 +51,15 @@ class AutoRig:
 
     def apply(self):
         mode = "[DRY RUN] " if self.dry_run else ""
-        console.print(f"[bold green]{mode}Applying configuration: {self.config.name}[/bold green]")
+        console.print(
+            f"[bold green]{mode}Applying configuration: {self.config.name}[/bold green]"
+        )
         self.logger.info(f"Starting apply: {self.config.name} (dry_run={self.dry_run})")
 
         # Create a progress display
-        with console.status("[bold green]Applying configuration...[/bold green]") as status:
+        with console.status(
+            "[bold green]Applying configuration...[/bold green]"
+        ) as status:
             self.logger.debug("Starting system package installation")
             status.update("[bold blue]Installing system packages...[/bold blue]")
             self._install_system_packages()
@@ -71,16 +85,22 @@ class AutoRig:
             console.print(f"[bold]Installing {len(packages)} system packages...[/bold]")
             self.logger.info(f"Installing {len(packages)} system packages")
             if self.dry_run:
-                console.print(f"[yellow]DRY RUN: Would install: {', '.join(packages)}[/yellow]")
+                console.print(
+                    f"[yellow]DRY RUN: Would install: {', '.join(packages)}[/yellow]"
+                )
                 return
 
             try:
                 if self.installer.install(packages):
-                    console.print("[green]System packages installed successfully.[/green]")
+                    console.print(
+                        "[green]System packages installed successfully.[/green]"
+                    )
                     self.logger.info(f"Successfully installed packages: {packages}")
                 else:
                     console.print("[red]Failed to install some system packages.[/red]")
-                    self.logger.error(f"Failed to install some system packages: {packages}")
+                    self.logger.error(
+                        f"Failed to install some system packages: {packages}"
+                    )
             except Exception as e:
                 console.print(f"[red]Error during package installation: {e}[/red]")
                 self.logger.error(f"Package installation error: {e}")
@@ -100,20 +120,30 @@ class AutoRig:
 
                 # Security check for path traversal
                 expanded_path = os.path.expanduser(repo.path)
-                if '..' in expanded_path or expanded_path.startswith('/tmp'):
-                    console.print(f"[red]Security error: Invalid repository path: {repo.path}[/red]")
-                    self.logger.error(f"Security error: Invalid repository path: {repo.path}")
+                if ".." in expanded_path or expanded_path.startswith("/tmp"):
+                    console.print(
+                        f"[red]Security error: Invalid repository path: {repo.path}[/red]"
+                    )
+                    self.logger.error(
+                        f"Security error: Invalid repository path: {repo.path}"
+                    )
                     continue
 
-                console.print(f"[dim]Processing repository {i}/{len(repos)}: {repo.url}[/dim]")
+                console.print(
+                    f"[dim]Processing repository {i}/{len(repos)}: {repo.url}[/dim]"
+                )
                 self.logger.debug(f"Processing repository {i}/{len(repos)}: {repo.url}")
 
                 if target_path.exists():
                     if (target_path / ".git").exists():
-                        console.print(f"[yellow]Path exists, updating:[/yellow] {repo.path}")
+                        console.print(
+                            f"[yellow]Path exists, updating:[/yellow] {repo.path}"
+                        )
                         self.logger.info(f"Repository exists, updating: {repo.url}")
                         if self.dry_run:
-                            console.print(f"[yellow]DRY RUN: Would pull in {target_path}[/yellow]")
+                            console.print(
+                                f"[yellow]DRY RUN: Would pull in {target_path}[/yellow]"
+                            )
                             continue
 
                         try:
@@ -121,20 +151,26 @@ class AutoRig:
                                 ["git", "-C", str(target_path), "pull"],
                                 check=True,
                                 capture_output=True,
-                                text=True
+                                text=True,
                             )
                             console.print(f"[green]Updated {repo.url}[/green]")
                             if self.verbose and result.stdout:
                                 console.print(f"[dim]Git output: {result.stdout}[/dim]")
                             self.logger.info(f"Updated git repo: {repo.url}")
                         except subprocess.CalledProcessError as e:
-                            console.print(f"[red]Failed to update {repo.url}: {e}[/red]")
+                            console.print(
+                                f"[red]Failed to update {repo.url}: {e}[/red]"
+                            )
                             if e.stderr:
                                 console.print(f"[red]Git error: {e.stderr}[/red]")
                             self.logger.error(f"Failed to update {repo.url}: {e}")
                     else:
-                        console.print(f"[yellow]Path exists but is not a git repository: {repo.path}[/yellow]")
-                        self.logger.warning(f"Path exists but is not a git repository: {repo.path}")
+                        console.print(
+                            f"[yellow]Path exists but is not a git repository: {repo.path}[/yellow]"
+                        )
+                        self.logger.warning(
+                            f"Path exists but is not a git repository: {repo.path}"
+                        )
                     continue
 
                 console.print(f"Cloning {repo.url} to {repo.path}...")
@@ -151,7 +187,7 @@ class AutoRig:
                         ["git", "clone", "-b", repo.branch, repo.url, str(target_path)],
                         check=True,
                         capture_output=True,
-                        text=True
+                        text=True,
                     )
                     console.print(f"[green]Cloned {repo.url}[/green]")
                     if self.verbose and result.stdout:
@@ -180,8 +216,12 @@ class AutoRig:
 
         for i, df in enumerate(dotfiles, 1):
             try:
-                console.print(f"[dim]Processing dotfile {i}/{len(dotfiles)}: {df.target}[/dim]")
-                self.logger.debug(f"Processing dotfile {i}/{len(dotfiles)}: {df.target}")
+                console.print(
+                    f"[dim]Processing dotfile {i}/{len(dotfiles)}: {df.target}[/dim]"
+                )
+                self.logger.debug(
+                    f"Processing dotfile {i}/{len(dotfiles)}: {df.target}"
+                )
 
                 # Resolve source relative to config file location
                 source = (config_dir / os.path.expanduser(df.source)).resolve()
@@ -191,8 +231,12 @@ class AutoRig:
                 try:
                     source.relative_to(config_dir)
                 except ValueError:
-                    console.print(f"[red]Security error: Source path outside config directory: {source}[/red]")
-                    self.logger.error(f"Security error: Source path outside config directory: {source}")
+                    console.print(
+                        f"[red]Security error: Source path outside config directory: {source}[/red]"
+                    )
+                    self.logger.error(
+                        f"Security error: Source path outside config directory: {source}"
+                    )
                     continue
 
                 if not source.exists():
@@ -205,7 +249,9 @@ class AutoRig:
                         # Backup existing
                         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
                         backup = Path(f"{target}.{timestamp}.bak")
-                        console.print(f"[yellow]Backing up existing {target} to {backup}[/yellow]")
+                        console.print(
+                            f"[yellow]Backing up existing {target} to {backup}[/yellow]"
+                        )
                         self.logger.info(f"Backing up {target} to {backup}")
 
                         if not self.dry_run:
@@ -214,28 +260,38 @@ class AutoRig:
                             else:
                                 shutil.move(str(target), str(backup))
                     else:
-                        console.print(f"[yellow]Force mode: removing existing {target}[/yellow]")
+                        console.print(
+                            f"[yellow]Force mode: removing existing {target}[/yellow]"
+                        )
                         self.logger.info(f"Force mode: removing existing {target}")
                         if not self.dry_run:
                             if target.is_symlink():
                                 target.unlink()
                             else:
-                                target.unlink() if target.is_file() else shutil.rmtree(target)
+                                (
+                                    target.unlink()
+                                    if target.is_file()
+                                    else shutil.rmtree(target)
+                                )
 
                 # Ensure parent dir exists
                 if not self.dry_run:
                     target.parent.mkdir(parents=True, exist_ok=True)
 
                 if self.dry_run:
-                    console.print(f"[yellow]DRY RUN: Would link {target} -> {source}[/yellow]")
+                    console.print(
+                        f"[yellow]DRY RUN: Would link {target} -> {source}[/yellow]"
+                    )
                     continue
 
                 # Check for template
-                if source.suffix == '.j2':
+                if source.suffix == ".j2":
                     try:
                         # Render relative path from config_dir
                         rel_source = source.relative_to(config_dir)
-                        self.renderer.render(str(rel_source), self.config.variables, target)
+                        self.renderer.render(
+                            str(rel_source), self.config.variables, target
+                        )
                         console.print(f"[green]Rendered {target} from {source}[/green]")
                         self.logger.info(f"Rendered template {source} to {target}")
                     except Exception as e:
@@ -252,8 +308,12 @@ class AutoRig:
                     self.logger.error(f"Link failed for {target}: {e}")
 
             except Exception as e:
-                console.print(f"[red]Error processing dotfile {df.source} -> {df.target}: {e}[/red]")
-                self.logger.error(f"Error processing dotfile {df.source} -> {df.target}: {e}")
+                console.print(
+                    f"[red]Error processing dotfile {df.source} -> {df.target}: {e}[/red]"
+                )
+                self.logger.error(
+                    f"Error processing dotfile {df.source} -> {df.target}: {e}"
+                )
 
     def _run_scripts(self):
         scripts = self.config.scripts
@@ -278,17 +338,30 @@ class AutoRig:
             cwd = os.path.expanduser(script.cwd) if script.cwd else None
 
             if self.dry_run:
-                console.print(f"[yellow]DRY RUN: Would execute: {script.command}[/yellow]")
+                console.print(
+                    f"[yellow]DRY RUN: Would execute: {script.command}[/yellow]"
+                )
                 continue
 
             try:
-                result = subprocess.run(script.command, shell=True, check=True, cwd=cwd, capture_output=True, text=True)
+                result = subprocess.run(
+                    script.command,
+                    shell=True,
+                    check=True,
+                    cwd=cwd,
+                    capture_output=True,
+                    text=True,
+                )
                 console.print(f"[green]✓ Completed: {desc}[/green]")
                 if result.stdout:
                     if self.verbose:
                         console.print(f"[dim]Output: {result.stdout}[/dim]")
                     else:
-                        console.print(f"[dim]Output: {result.stdout[:200]}...[/dim]" if len(result.stdout) > 200 else f"[dim]Output: {result.stdout}[/dim]")
+                        console.print(
+                            f"[dim]Output: {result.stdout[:200]}...[/dim]"
+                            if len(result.stdout) > 200
+                            else f"[dim]Output: {result.stdout}[/dim]"
+                        )
                 self.logger.info(f"Script completed: {desc}")
             except subprocess.CalledProcessError as e:
                 console.print(f"[red]✗ Failed: {desc} ({e})[/red]")
@@ -302,12 +375,12 @@ class AutoRig:
         """
         # Check for dangerous patterns that could indicate command injection
         dangerous_patterns = [
-            r'\|\|',  # command chaining
-            r'&&',    # command chaining
-            r';',     # command separation
-            r'\$\(\(', # arithmetic expansion
-            r'`',     # command substitution
-            r'\$\(.*\)', # command substitution
+            r"\|\|",  # command chaining
+            r"&&",  # command chaining
+            r";",  # command separation
+            r"\$\(\(",  # arithmetic expansion
+            r"`",  # command substitution
+            r"\$\(.*\)",  # command substitution
         ]
 
         for pattern in dangerous_patterns:
@@ -317,19 +390,21 @@ class AutoRig:
 
     def clean(self):
         mode = "[DRY RUN] " if self.dry_run else ""
-        console.print(f"[bold red]{mode}Cleaning configuration: {self.config.name}[/bold red]")
-        
+        console.print(
+            f"[bold red]{mode}Cleaning configuration: {self.config.name}[/bold red]"
+        )
+
         dotfiles = self.config.dotfiles
         if not dotfiles:
             return
 
         config_dir = Path(self.config_path).parent.absolute()
-        
+
         for df in dotfiles:
             target = Path(os.path.expanduser(df.target))
             # Resolve what the link source should be
             source = (config_dir / os.path.expanduser(df.source)).resolve()
-            
+
             if target.is_symlink():
                 try:
                     # Check if the symlink actually points to our source
@@ -338,7 +413,9 @@ class AutoRig:
                         if not self.dry_run:
                             target.unlink()
                     else:
-                        console.print(f"[yellow]Skipping {target}: Points elsewhere[/yellow]")
+                        console.print(
+                            f"[yellow]Skipping {target}: Points elsewhere[/yellow]"
+                        )
                 except FileNotFoundError:
                     console.print(f"Removing broken symlink: {target}")
                     if not self.dry_run:
@@ -354,28 +431,34 @@ class AutoRig:
 
     def status(self):
         console.print(f"[bold]Configuration Status: {self.config.name}[/bold]")
-        
+
         config_dir = Path(self.config_path).parent.absolute()
-        
+
         # Dotfiles
         if self.config.dotfiles:
             console.print("\n[bold]Dotfiles:[/bold]")
             for df in self.config.dotfiles:
                 target = Path(os.path.expanduser(df.target))
                 source = (config_dir / os.path.expanduser(df.source)).resolve()
-                
-                if source.suffix == '.j2':
+
+                if source.suffix == ".j2":
                     if target.exists() and not target.is_symlink():
-                        console.print(f"  [green]✓[/green] {df.target} (Template Rendered)")
+                        console.print(
+                            f"  [green]✓[/green] {df.target} (Template Rendered)"
+                        )
                     elif target.exists():
-                        console.print(f"  [yellow]![/yellow] {df.target} (Type Mismatch)")
+                        console.print(
+                            f"  [yellow]![/yellow] {df.target} (Type Mismatch)"
+                        )
                     else:
                         console.print(f"  [red]✗[/red] {df.target} (Missing)")
                 else:
                     if target.is_symlink() and target.resolve() == source:
                         console.print(f"  [green]✓[/green] {df.target}")
                     elif target.exists():
-                        console.print(f"  [yellow]![/yellow] {df.target} (File/Link Mismatch)")
+                        console.print(
+                            f"  [yellow]![/yellow] {df.target} (File/Link Mismatch)"
+                        )
                     else:
                         console.print(f"  [red]✗[/red] {df.target} (Missing)")
 
@@ -397,37 +480,45 @@ class AutoRig:
         for df in self.config.dotfiles:
             target = Path(os.path.expanduser(df.target))
             source = (config_dir / os.path.expanduser(df.source)).resolve()
-            
+
             if not target.exists():
                 console.print(f"\n[bold green]New File:[/bold green] {target}")
                 continue
-            
+
             try:
                 # Get source content
-                if source.suffix == '.j2':
+                if source.suffix == ".j2":
                     rel_source = source.relative_to(config_dir)
-                    source_content = self.renderer.render_string(str(rel_source), self.config.variables).splitlines()
+                    source_content = self.renderer.render_string(
+                        str(rel_source), self.config.variables
+                    ).splitlines()
                 else:
                     source_content = source.read_text().splitlines()
-                
+
                 # Get target content
                 target_content = target.read_text().splitlines()
-                
+
                 # Generate diff
-                diff_lines = list(difflib.unified_diff(
-                    target_content,
-                    source_content,
-                    fromfile=str(target),
-                    tofile=str(source),
-                    lineterm=""
-                ))
-                
+                diff_lines = list(
+                    difflib.unified_diff(
+                        target_content,
+                        source_content,
+                        fromfile=str(target),
+                        tofile=str(source),
+                        lineterm="",
+                    )
+                )
+
                 if diff_lines:
                     console.print(f"\n[bold yellow]Changes for {target}:[/bold yellow]")
                     for line in diff_lines:
-                        color = "red" if line.startswith("-") else "green" if line.startswith("+") else "white"
+                        color = (
+                            "red"
+                            if line.startswith("-")
+                            else "green" if line.startswith("+") else "white"
+                        )
                         console.print(f"[{color}]{line}[/{color}]")
-            
+
             except Exception as e:
                 console.print(f"[red]Could not diff {target}: {e}[/red]")
 
@@ -435,7 +526,9 @@ class AutoRig:
         """Rollback to the most recent backup."""
         try:
             latest = self.backup_manager.get_latest_snapshot()
-            console.print(f"[bold]Rolling back to latest snapshot:[/bold] {latest.name}")
+            console.print(
+                f"[bold]Rolling back to latest snapshot:[/bold] {latest.name}"
+            )
             self.restore(str(latest))
         except FileNotFoundError as e:
             console.print(f"[red]{e}[/red]")
@@ -457,11 +550,15 @@ class AutoRig:
                     if time.time() - self.last_run < 1:
                         return
                     self.last_run = time.time()
-                    
-                    console.print("\n[bold yellow]Configuration changed. Applying...[/bold yellow]")
+
+                    console.print(
+                        "\n[bold yellow]Configuration changed. Applying...[/bold yellow]"
+                    )
                     # Reload config
                     try:
-                        self.rigger.config = RigConfig.from_yaml(self.rigger.config_path)
+                        self.rigger.config = RigConfig.from_yaml(
+                            self.rigger.config_path
+                        )
                         self.rigger.apply()
                     except Exception as e:
                         console.print(f"[red]Error applying changes:[/red] {e}")
@@ -471,8 +568,10 @@ class AutoRig:
         observer = Observer()
         observer.schedule(event_handler, path=str(config_path.parent), recursive=False)
         observer.start()
-        
-        console.print(f"[bold green]Watching {config_path} for changes... (Press Ctrl+C to stop)[/bold green]")
+
+        console.print(
+            f"[bold green]Watching {config_path} for changes... (Press Ctrl+C to stop)[/bold green]"
+        )
         try:
             while True:
                 time.sleep(1)
@@ -513,7 +612,9 @@ scripts:
             f.write(default_config)
         console.print(f"[green]Created default configuration at {path}[/green]")
         if verbose:
-            console.print("[blue]Configuration includes packages, repositories, dotfiles, and scripts.[/blue]")
+            console.print(
+                "[blue]Configuration includes packages, repositories, dotfiles, and scripts.[/blue]"
+            )
 
     def sync_repos(self):
         repos = self.config.git.repositories
@@ -532,9 +633,15 @@ scripts:
 
                 try:
                     # Check for uncommitted changes just to inform
-                    status = subprocess.run(["git", "-C", str(target_path), "status", "--porcelain"], capture_output=True, text=True)
+                    status = subprocess.run(
+                        ["git", "-C", str(target_path), "status", "--porcelain"],
+                        capture_output=True,
+                        text=True,
+                    )
                     if status.stdout.strip():
-                        console.print(f"[yellow]Warning: {repo.path} has uncommitted changes.[/yellow]")
+                        console.print(
+                            f"[yellow]Warning: {repo.path} has uncommitted changes.[/yellow]"
+                        )
 
                     subprocess.run(["git", "-C", str(target_path), "push"], check=True)
                     console.print(f"[green]Pushed {repo.path}[/green]")
@@ -551,9 +658,13 @@ scripts:
 
         for plugin_name in plugin_names:
             try:
-                success = plugin_manager.run_plugin(plugin_name, self.config, self.dry_run, self.verbose)
+                success = plugin_manager.run_plugin(
+                    plugin_name, self.config, self.dry_run, self.verbose
+                )
                 if success:
-                    console.print(f"[green]Plugin {plugin_name} completed successfully[/green]")
+                    console.print(
+                        f"[green]Plugin {plugin_name} completed successfully[/green]"
+                    )
                 else:
                     console.print(f"[red]Plugin {plugin_name} failed[/red]")
             except ValueError as e:
@@ -565,7 +676,9 @@ scripts:
         """Run all registered plugins."""
         available_plugins = plugin_manager.get_available_plugins()
         if available_plugins:
-            console.print(f"[bold]Running all plugins: {', '.join(available_plugins)}[/bold]")
+            console.print(
+                f"[bold]Running all plugins: {', '.join(available_plugins)}[/bold]"
+            )
             plugin_manager.run_all_plugins(self.config, self.dry_run, self.verbose)
         else:
             console.print("[yellow]No plugins registered[/yellow]")

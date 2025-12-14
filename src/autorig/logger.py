@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 
+
 def setup_logging(verbose: bool = False):
     log_dir = Path(os.path.expanduser("~/.autorig/logs"))
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -21,7 +22,7 @@ def setup_logging(verbose: bool = False):
     fh = logging.FileHandler(log_file)
     fh.setLevel(logging.DEBUG)
     file_formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s'
+        "%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s"
     )
     fh.setFormatter(file_formatter)
 
@@ -29,7 +30,7 @@ def setup_logging(verbose: bool = False):
     if verbose:
         ch = logging.StreamHandler()
         ch.setLevel(logging.INFO)
-        console_formatter = logging.Formatter('%(levelname)s - %(message)s')
+        console_formatter = logging.Formatter("%(levelname)s - %(message)s")
         ch.setFormatter(console_formatter)
         logger.addHandler(ch)
 

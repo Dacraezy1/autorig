@@ -3,6 +3,7 @@ import subprocess
 from typing import List
 from .base import SystemInstaller
 
+
 class LinuxInstaller(SystemInstaller):
     def install(self, packages: List[str]) -> bool:
         manager = self._get_manager()

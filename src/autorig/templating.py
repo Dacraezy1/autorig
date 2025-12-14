@@ -2,6 +2,7 @@ from typing import Any, Dict
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 
+
 class TemplateRenderer:
     def __init__(self, search_path: Path):
         self.env = Environment(loader=FileSystemLoader(str(search_path)))

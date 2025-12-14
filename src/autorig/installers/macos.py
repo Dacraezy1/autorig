@@ -3,6 +3,7 @@ import subprocess
 from typing import List
 from .base import SystemInstaller
 
+
 class MacOSInstaller(SystemInstaller):
     def install(self, packages: List[str]) -> bool:
         # Check for package managers: homebrew, macports
