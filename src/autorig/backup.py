@@ -45,3 +45,11 @@ class BackupManager:
             tar.extractall(path="/")
             
         console.print(f"[green]Restored files from {path}[/green]")
+
+    def get_latest_snapshot(self) -> Path:
+        snapshots = list(self.backup_dir.glob("*.tar.gz"))
+        if not snapshots:
+            raise FileNotFoundError("No backups found.")
+        # Sort by name (which contains timestamp YYYYMMDD-HHMMSS) descending
+        latest = sorted(snapshots, key=lambda p: p.name, reverse=True)[0]
+        return latest

@@ -23,6 +23,7 @@ setup(
         "pyyaml>=6.0",
         "pydantic>=2.0.0",
         "jinja2>=3.0.0",
+        "watchdog>=2.0.0",
     ],
     entry_points={
         "console_scripts": [

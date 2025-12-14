@@ -98,6 +98,30 @@ def diff(config: str = typer.Argument(..., help="Path to rig.yaml config file"))
         console.print(f"[bold red]Error checking diff:[/bold red] {e}")
         raise typer.Exit(code=1)
 
+@app.command()
+def rollback(config: str = typer.Argument(..., help="Path to rig.yaml config file")):
+    """
+    Rollback to the most recent backup snapshot.
+    """
+    try:
+        rig = AutoRig(config)
+        rig.rollback()
+    except Exception as e:
+        console.print(f"[bold red]Error rolling back:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+@app.command()
+def watch(config: str = typer.Argument(..., help="Path to rig.yaml config file")):
+    """
+    Monitor the config file and automatically apply changes when saved.
+    """
+    try:
+        rig = AutoRig(config)
+        rig.watch()
+    except Exception as e:
+        console.print(f"[bold red]Error watching config:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
 def main():
     app()
 

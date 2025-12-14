@@ -16,6 +16,7 @@
 - **🔍 Diff & Status**: Inspect changes and current state before applying.
 - **🧹 Clean Mode**: Easily remove symlinks created by the tool.
 - **📝 Logging**: Detailed execution logs stored in `~/.autorig/logs/`.
+- **👀 Watch Mode**: Automatically apply changes when you save `rig.yaml`.
 
 ## Installation
 

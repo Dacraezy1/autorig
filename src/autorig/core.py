@@ -288,3 +288,52 @@ class AutoRig:
             
             except Exception as e:
                 console.print(f"[red]Could not diff {target}: {e}[/red]")
+
+    def rollback(self):
+        """Rollback to the most recent backup."""
+        try:
+            latest = self.backup_manager.get_latest_snapshot()
+            console.print(f"[bold]Rolling back to latest snapshot:[/bold] {latest.name}")
+            self.restore(str(latest))
+        except FileNotFoundError as e:
+            console.print(f"[red]{e}[/red]")
+
+    def watch(self):
+        """Monitor config file for changes."""
+        from watchdog.observers import Observer
+        from watchdog.events import FileSystemEventHandler
+        import time
+
+        class ConfigHandler(FileSystemEventHandler):
+            def __init__(self, rigger):
+                self.rigger = rigger
+                self.last_run = 0
+
+            def on_modified(self, event):
+                if event.src_path == str(Path(self.rigger.config_path).absolute()):
+                    # Simple debounce
+                    if time.time() - self.last_run < 1:
+                        return
+                    self.last_run = time.time()
+                    
+                    console.print(f"\n[bold yellow]Configuration changed. Applying...[/bold yellow]")
+                    # Reload config
+                    try:
+                        self.rigger.config = RigConfig.from_yaml(self.rigger.config_path)
+                        self.rigger.apply()
+                    except Exception as e:
+                        console.print(f"[red]Error applying changes:[/red] {e}")
+
+        config_path = Path(self.config_path).absolute()
+        event_handler = ConfigHandler(self)
+        observer = Observer()
+        observer.schedule(event_handler, path=str(config_path.parent), recursive=False)
+        observer.start()
+        
+        console.print(f"[bold green]Watching {config_path} for changes... (Press Ctrl+C to stop)[/bold green]")
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            observer.stop()
+        observer.join()
