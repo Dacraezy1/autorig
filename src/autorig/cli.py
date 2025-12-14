@@ -17,6 +17,18 @@ def apply(config: str = typer.Argument(..., help="Path to rig.yaml config file")
         console.print(f"[bold red]Error:[/bold red] {e}")
         raise typer.Exit(code=1)
 
+@app.command()
+def validate(config: str = typer.Argument(..., help="Path to rig.yaml config file")):
+    """
+    Validate a rig configuration file.
+    """
+    try:
+        AutoRig(config)
+        console.print(f"[bold green]Configuration file '{config}' is valid.[/bold green]")
+    except Exception as e:
+        console.print(f"[bold red]Error validating configuration:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
 def main():
     app()
 

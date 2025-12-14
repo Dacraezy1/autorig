@@ -1,5 +1,11 @@
+# AutoRig Configuration File
+# --------------------------
+# This file defines the state of your development environment.
+
 name: "My Linux Dev Station"
 
+# System Packages
+# These are installed using your distribution's package manager (apt, dnf, pacman, yay).
 system:
   packages:
     - curl
@@ -8,12 +14,16 @@ system:
     - tmux
     - htop
 
+# Git Repositories
+# These repositories will be cloned to the specified paths.
 git:
   repositories:
     - url: "https://github.com/Dacraezy1/autorig"
       path: "~/projects/tools/autorig"
       branch: "main"
 
+# Dotfiles
+# Symlink configuration files from your repo to your home directory.
 dotfiles:
   # Ensure these files exist relative to where you run autorig
   # - source: "./vimrc"
