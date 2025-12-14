@@ -20,6 +20,7 @@ class AutoRig:
         self._install_system_packages()
         self._process_git_repos()
         self._link_dotfiles()
+        self._run_scripts()
         
         console.print("[bold green]✨ Rig setup complete![/bold green]")
 
@@ -93,3 +94,21 @@ class AutoRig:
                 console.print(f"[green]Linked {target} -> {source}[/green]")
             except Exception as e:
                 console.print(f"[red]Failed to link {target}: {e}[/red]")
+
+    def _run_scripts(self):
+        scripts = self.config.scripts
+        if not scripts:
+            return
+
+        console.print(f"[bold]Running {len(scripts)} post-install scripts...[/bold]")
+        for script in scripts:
+            desc = script.description or script.command
+            console.print(f"Running: {desc}")
+            
+            cwd = os.path.expanduser(script.cwd) if script.cwd else None
+            
+            try:
+                subprocess.run(script.command, shell=True, check=True, cwd=cwd)
+                console.print(f"[green]✓ Completed: {desc}[/green]")
+            except subprocess.CalledProcessError as e:
+                console.print(f"[red]✗ Failed: {desc} ({e})[/red]")

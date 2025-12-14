@@ -17,11 +17,17 @@ class Dotfile(BaseModel):
     source: str
     target: str
 
+class Script(BaseModel):
+    command: str
+    description: Optional[str] = None
+    cwd: Optional[str] = None
+
 class RigConfig(BaseModel):
     name: str
     system: SystemConfig = SystemConfig()
     git: GitConfig = GitConfig()
     dotfiles: List[Dotfile] = []
+    scripts: List[Script] = []
 
     @classmethod
     def from_yaml(cls, path: str) -> "RigConfig":
