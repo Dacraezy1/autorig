@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+from datetime import datetime
 from pathlib import Path
 from rich.console import Console
 from .config import RigConfig
@@ -9,13 +10,15 @@ from .installers.base import get_system_installer
 console = Console()
 
 class AutoRig:
-    def __init__(self, config_path: str):
+    def __init__(self, config_path: str, dry_run: bool = False):
         self.config_path = config_path
         self.config = RigConfig.from_yaml(config_path)
         self.installer = get_system_installer()
+        self.dry_run = dry_run
 
     def apply(self):
-        console.print(f"[bold green]Applying configuration: {self.config.name}[/bold green]")
+        mode = "[DRY RUN] " if self.dry_run else ""
+        console.print(f"[bold green]{mode}Applying configuration: {self.config.name}[/bold green]")
         
         self._install_system_packages()
         self._process_git_repos()
@@ -28,6 +31,10 @@ class AutoRig:
         packages = self.config.system.packages
         if packages:
             console.print(f"[bold]Installing {len(packages)} system packages...[/bold]")
+            if self.dry_run:
+                console.print(f"[yellow]DRY RUN: Would install: {', '.join(packages)}[/yellow]")
+                return
+
             if self.installer.install(packages):
                 console.print("[green]System packages installed successfully.[/green]")
             else:
@@ -43,6 +50,10 @@ class AutoRig:
             target_path = Path(os.path.expanduser(repo.path))
             if target_path.exists():
                 console.print(f"[yellow]Path exists, updating:[/yellow] {repo.path}")
+                if self.dry_run:
+                    console.print(f"[yellow]DRY RUN: Would pull in {target_path}[/yellow]")
+                    continue
+
                 try:
                     subprocess.run(["git", "-C", str(target_path), "pull"], check=True)
                     console.print(f"[green]Updated {repo.url}[/green]")
@@ -51,6 +62,10 @@ class AutoRig:
                 continue
             
             console.print(f"Cloning {repo.url} to {repo.path}...")
+            if self.dry_run:
+                console.print(f"[yellow]DRY RUN: Would clone {repo.url}[/yellow]")
+                continue
+
             try:
                 subprocess.run(
                     ["git", "clone", "-b", repo.branch, repo.url, str(target_path)],
@@ -79,16 +94,24 @@ class AutoRig:
                 
             if target.exists() or target.is_symlink():
                 # Backup existing
-                backup = target.with_suffix(target.suffix + ".bak")
+                timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+                backup = Path(f"{target}.{timestamp}.bak")
                 console.print(f"[yellow]Backing up existing {target} to {backup}[/yellow]")
-                if target.is_symlink():
-                    target.unlink()
-                else:
-                    shutil.move(str(target), str(backup))
+                
+                if not self.dry_run:
+                    if target.is_symlink():
+                        target.unlink()
+                    else:
+                        shutil.move(str(target), str(backup))
             
             # Ensure parent dir exists
-            target.parent.mkdir(parents=True, exist_ok=True)
+            if not self.dry_run:
+                target.parent.mkdir(parents=True, exist_ok=True)
             
+            if self.dry_run:
+                console.print(f"[yellow]DRY RUN: Would link {target} -> {source}[/yellow]")
+                continue
+
             try:
                 target.symlink_to(source)
                 console.print(f"[green]Linked {target} -> {source}[/green]")
@@ -106,6 +129,10 @@ class AutoRig:
             console.print(f"Running: {desc}")
             
             cwd = os.path.expanduser(script.cwd) if script.cwd else None
+            
+            if self.dry_run:
+                console.print(f"[yellow]DRY RUN: Would execute: {script.command}[/yellow]")
+                continue
             
             try:
                 subprocess.run(script.command, shell=True, check=True, cwd=cwd)

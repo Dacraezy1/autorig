@@ -6,12 +6,15 @@ app = typer.Typer()
 console = Console()
 
 @app.command()
-def apply(config: str = typer.Argument(..., help="Path to rig.yaml config file")):
+def apply(
+    config: str = typer.Argument(..., help="Path to rig.yaml config file"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Simulate actions without making changes")
+):
     """
     Apply a rig configuration to the local machine.
     """
     try:
-        rig = AutoRig(config)
+        rig = AutoRig(config, dry_run=dry_run)
         rig.apply()
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
