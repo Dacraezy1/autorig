@@ -17,6 +17,7 @@
 - **🧹 Clean Mode**: Easily remove symlinks created by the tool.
 - **📝 Logging**: Detailed execution logs stored in `~/.autorig/logs/`.
 - **👀 Watch Mode**: Automatically apply changes when you save `rig.yaml`.
+- **🔐 Secrets**: Support for environment variables in config (e.g., `${GITHUB_TOKEN}`).
 
 ## Installation
 
@@ -27,6 +28,14 @@ pip install .
 ```
 
 ## Usage
+
+### Quick Start
+
+Generate a default configuration file:
+
+```bash
+autorig bootstrap
+```
 
 ### Applying a Configuration
 

@@ -122,6 +122,17 @@ def watch(config: str = typer.Argument(..., help="Path to rig.yaml config file")
         console.print(f"[bold red]Error watching config:[/bold red] {e}")
         raise typer.Exit(code=1)
 
+@app.command()
+def bootstrap(path: str = typer.Argument("rig.yaml", help="Path to generate the config file")):
+    """
+    Generate a default rig.yaml configuration file.
+    """
+    try:
+        AutoRig.create_default_config(path)
+    except Exception as e:
+        console.print(f"[bold red]Error bootstrapping:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
 def main():
     app()
 

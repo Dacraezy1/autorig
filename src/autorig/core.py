@@ -337,3 +337,36 @@ class AutoRig:
         except KeyboardInterrupt:
             observer.stop()
         observer.join()
+
+    @staticmethod
+    def create_default_config(path: str):
+        if os.path.exists(path):
+            raise FileExistsError(f"File {path} already exists.")
+            
+        default_config = """name: "My Developer Setup"
+
+variables:
+  email: "user@example.com"
+
+system:
+  packages:
+    - git
+    - vim
+    - curl
+
+git:
+  repositories:
+    # - url: "https://github.com/username/repo.git"
+    #   path: "~/projects/repo"
+
+dotfiles:
+  # - source: ".bashrc"
+  #   target: "~/.bashrc"
+
+scripts:
+  # - command: "echo 'Hello World'"
+  #   description: "Test script"
+"""
+        with open(path, "w") as f:
+            f.write(default_config)
+        console.print(f"[green]Created default configuration at {path}[/green]")

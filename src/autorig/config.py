@@ -1,4 +1,5 @@
 from typing import List, Optional, Dict, Any
+import os
 from pydantic import BaseModel
 import yaml
 
@@ -33,5 +34,8 @@ class RigConfig(BaseModel):
     @classmethod
     def from_yaml(cls, path: str) -> "RigConfig":
         with open(path, "r") as f:
-            data = yaml.safe_load(f)
+            content = f.read()
+        
+        content = os.path.expandvars(content)
+        data = yaml.safe_load(content)
         return cls(**data)
