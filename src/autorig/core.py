@@ -370,3 +370,33 @@ scripts:
         with open(path, "w") as f:
             f.write(default_config)
         console.print(f"[green]Created default configuration at {path}[/green]")
+
+    def sync_repos(self):
+        repos = self.config.git.repositories
+        if not repos:
+            console.print("No repositories defined to sync.")
+            return
+            
+        console.print(f"[bold]Syncing {len(repos)} git repositories...[/bold]")
+        for repo in repos:
+            target_path = Path(os.path.expanduser(repo.path))
+            if target_path.exists() and (target_path / ".git").exists():
+                console.print(f"Syncing {repo.path}...")
+                if self.dry_run:
+                    console.print(f"[yellow]DRY RUN: Would push {target_path}[/yellow]")
+                    continue
+
+                try:
+                    # Check for uncommitted changes just to inform
+                    status = subprocess.run(["git", "-C", str(target_path), "status", "--porcelain"], capture_output=True, text=True)
+                    if status.stdout.strip():
+                        console.print(f"[yellow]Warning: {repo.path} has uncommitted changes.[/yellow]")
+
+                    subprocess.run(["git", "-C", str(target_path), "push"], check=True)
+                    console.print(f"[green]Pushed {repo.path}[/green]")
+                    self.logger.info(f"Pushed git repo: {repo.path}")
+                except subprocess.CalledProcessError as e:
+                    console.print(f"[red]Failed to push {repo.path}: {e}[/red]")
+                    self.logger.error(f"Failed to push {repo.path}: {e}")
+            else:
+                console.print(f"[yellow]Skipping {repo.path}: Not a git repo[/yellow]")

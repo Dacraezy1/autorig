@@ -133,6 +133,21 @@ def bootstrap(path: str = typer.Argument("rig.yaml", help="Path to generate the 
         console.print(f"[bold red]Error bootstrapping:[/bold red] {e}")
         raise typer.Exit(code=1)
 
+@app.command()
+def sync(
+    config: str = typer.Argument(..., help="Path to rig.yaml config file"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Simulate actions without making changes")
+):
+    """
+    Push local changes in git repositories to remotes.
+    """
+    try:
+        rig = AutoRig(config, dry_run=dry_run)
+        rig.sync_repos()
+    except Exception as e:
+        console.print(f"[bold red]Error syncing repos:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
 def main():
     app()
 

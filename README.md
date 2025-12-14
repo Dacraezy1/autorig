@@ -19,9 +19,13 @@
 - **👀 Watch Mode**: Automatically apply changes when you save `rig.yaml`.
 - **🔐 Secrets**: Support for environment variables in config (e.g., `${GITHUB_TOKEN}`).
 
-## Installation
+## Requirements
 
-Requires Python 3.8+.
+- **OS**: Linux or macOS
+- **Python**: 3.9+
+- **Git**: Installed on the system
+
+## Installation
 
 ```bash
 pip install .
@@ -51,6 +55,56 @@ To preview what will happen without making changes:
 autorig apply rig.yaml --dry-run
 ```
 
+### Syncing Repositories
+
+Push local changes in your configured git repositories to their remotes:
+
+```bash
+autorig sync rig.yaml
+```
+
+### Checking Status & Diff
+
+View the status of your links and repositories:
+
+```bash
+autorig status rig.yaml
+```
+
+See the difference between your current system files and the configuration (including rendered templates):
+
+```bash
+autorig diff rig.yaml
+```
+
+### Backup & Restore
+
+Create a full compressed snapshot of your current dotfiles:
+
+```bash
+autorig backup rig.yaml
+```
+
+Restore files from a specific snapshot:
+
+```bash
+autorig restore rig.yaml ~/.autorig/backups/My_Setup_20231027-103000.tar.gz
+```
+
+Quickly rollback to the most recent snapshot:
+
+```bash
+autorig rollback rig.yaml
+```
+
+### Watch Mode
+
+Automatically apply configuration whenever you save the file:
+
+```bash
+autorig watch rig.yaml
+```
+
 ### Cleaning Up
 
 To remove symlinks created by the configuration:
@@ -69,10 +123,15 @@ autorig validate rig.yaml
 
 ## Configuration (`rig.yaml`)
 
-Create a YAML file to define your setup:
+Create a YAML file to define your setup. You can use variables for Jinja2 templating.
 
 ```yaml
 name: "My Developer Setup"
+
+# Variables available in .j2 templates
+variables:
+  email: "user@example.com"
+  theme: "dracula"
 
 system:
   packages:
@@ -94,6 +153,10 @@ dotfiles:
     target: "~/.zshrc"
   - source: "vim/.vimrc"
     target: "~/.vimrc"
+  # If source ends in .j2, it is rendered as a Jinja2 template using 'variables'
+  # Example: gitconfig.j2 containing "email = {{ email }}"
+  - source: "git/gitconfig.j2"
+    target: "~/.gitconfig"
 
 scripts:
   - command: "~/.fzf/install --all"
