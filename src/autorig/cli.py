@@ -47,6 +47,18 @@ def validate(config: str = typer.Argument(..., help="Path to rig.yaml config fil
         console.print(f"[bold red]Error validating configuration:[/bold red] {e}")
         raise typer.Exit(code=1)
 
+@app.command()
+def backup(config: str = typer.Argument(..., help="Path to rig.yaml config file")):
+    """
+    Create a full backup archive of all dotfiles defined in the config.
+    """
+    try:
+        rig = AutoRig(config)
+        rig.backup()
+    except Exception as e:
+        console.print(f"[bold red]Error creating backup:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
 def main():
     app()
 

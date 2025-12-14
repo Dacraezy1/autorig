@@ -6,6 +6,7 @@ from pathlib import Path
 from rich.console import Console
 from .config import RigConfig
 from .installers.base import get_system_installer
+from .backup import BackupManager
 
 console = Console()
 
@@ -15,6 +16,7 @@ class AutoRig:
         self.config = RigConfig.from_yaml(config_path)
         self.installer = get_system_installer()
         self.dry_run = dry_run
+        self.backup_manager = BackupManager(self.config)
 
     def apply(self):
         mode = "[DRY RUN] " if self.dry_run else ""
@@ -168,3 +170,7 @@ class AutoRig:
                     console.print(f"Removing broken symlink: {target}")
                     if not self.dry_run:
                         target.unlink()
+
+    def backup(self):
+        """Create a full snapshot of the current target files."""
+        self.backup_manager.create_snapshot()
