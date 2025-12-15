@@ -8,6 +8,8 @@ import socket
 from pathlib import Path
 from typing import Dict, Optional, Any
 
+import yaml
+
 
 class EnvironmentDetector:
     """
@@ -167,7 +169,7 @@ def load_profile_config(
         config_path.replace(".yaml", ".local.yaml"),  # Local overrides
     ]
 
-    final_config = {}
+    final_config: Dict[str, Any] = {}
 
     for config_file in config_files:
         config_path_obj = Path(config_file)
@@ -182,8 +184,6 @@ def load_profile_config(
                 raise ValueError(
                     f"Error expanding environment variables in config: {e}"
                 )
-
-            import yaml
 
             try:
                 config_data = yaml.safe_load(content) or {}

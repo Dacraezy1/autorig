@@ -31,14 +31,14 @@ class PluginManager:
     Manages loading and executing plugins.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.plugins: List[Plugin] = []
 
-    def register(self, plugin: Plugin):
+    def register(self, plugin: Plugin) -> None:
         """Register a plugin."""
         self.plugins.append(plugin)
 
-    def register_from_module(self, module_name: str):
+    def register_from_module(self, module_name: str) -> None:
         """Dynamically load and register plugins from a module."""
         try:
             module = __import__(module_name, fromlist=[""])
@@ -74,7 +74,7 @@ class PluginManager:
 
     def run_all_plugins(
         self, config: RigConfig, dry_run: bool = False, verbose: bool = False
-    ):
+    ) -> None:
         """Run all registered plugins."""
         for plugin in self.plugins:
             try:
