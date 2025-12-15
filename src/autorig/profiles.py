@@ -8,7 +8,7 @@ import socket
 from pathlib import Path
 from typing import Dict, Optional, Any
 
-import yaml
+import yaml  # type: ignore
 
 
 class EnvironmentDetector:

@@ -37,3 +37,8 @@ autorig = "autorig.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.mypy]
+# Enable installing missing stub packages automatically
+install_types = true
+non_interactive = true
