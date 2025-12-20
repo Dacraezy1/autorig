@@ -1,4 +1,4 @@
-__version__ = "0.3.0"
+__version__ = "1.0.0"
 
 # Import and register plugins
 from .plugins import plugin_manager

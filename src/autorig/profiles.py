@@ -5,8 +5,9 @@ Environment detection and profiles functionality for AutoRig.
 import os
 import platform
 import socket
+import subprocess
 from pathlib import Path
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List
 
 import yaml  # type: ignore[import-untyped]
 
@@ -35,9 +36,133 @@ class EnvironmentDetector:
             "home": os.path.expanduser("~"),
             "is_wsl": self._is_wsl(),
             "is_docker": self._is_docker(),
+            "is_vm": self._is_vm(),
+            "is_ci": self._is_ci(),
             "desktop_environment": os.environ.get("XDG_CURRENT_DESKTOP", ""),
             "display_server": os.environ.get("XDG_SESSION_TYPE", ""),
+            "session_type": os.environ.get("XDG_SESSION_TYPE", ""),
+            "wayland_display": os.environ.get("WAYLAND_DISPLAY", ""),
+            "term": os.environ.get("TERM", ""),
+            "term_program": os.environ.get("TERM_PROGRAM", ""),
+            "editor": os.environ.get("EDITOR", os.environ.get("VISUAL", "vi")),
+            "language": os.environ.get("LANG", ""),
+            "timezone": os.environ.get("TZ", ""),
+            "display": os.environ.get("DISPLAY", ""),
+            "packages_installed": self._get_installed_packages(),
+            "gpu_info": self._get_gpu_info(),
+            "memory_gb": self._get_memory_gb(),
+            "cpu_cores": self._get_cpu_cores(),
+            "disk_space_gb": self._get_disk_space_gb(),
         }
+
+    def _is_vm(self) -> bool:
+        """Check if running inside a virtual machine."""
+        try:
+            # Check for common VM indicators in DMI
+            import subprocess
+            result = subprocess.run(["systemd-detect-virt"],
+                                  capture_output=True, text=True, check=True)
+            if result.stdout.strip() != "none":
+                return True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            # Fallback method: check for VM indicators in other ways
+            try:
+                with open("/sys/class/dmi/id/product_name", "r") as f:
+                    product_name = f.read().strip().lower()
+                    vm_indicators = ["vmware", "virtualbox", "qemu", "kvm", "parallels", "bochs"]
+                    if any(indicator in product_name for indicator in vm_indicators):
+                        return True
+            except FileNotFoundError:
+                pass
+        return False
+
+    def _is_ci(self) -> bool:
+        """Check if running in a CI/CD environment."""
+        ci_vars = [
+            "CI", "CONTINUOUS_INTEGRATION", "BUILD_NUMBER",
+            "GITHUB_ACTIONS", "TRAVIS", "CIRCLECI", "JENKINS_URL",
+            "GITLAB_CI", "TEAMCITY_VERSION"
+        ]
+        return any(os.environ.get(var) for var in ci_vars)
+
+    def _get_installed_packages(self) -> List[str]:
+        """Get a list of installed packages (best effort)."""
+        try:
+            if self.env_info["os"] == "linux":
+                # Try different package managers
+                for cmd in [["dpkg", "-l"], ["rpm", "-qa"], ["pacman", "-Q"], ["brew", "list"]]:
+                    try:
+                        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+                        packages = result.stdout.split('\n')
+                        # Filter and clean package names
+                        packages = [pkg.split()[0] if pkg.split() else "" for pkg in packages if pkg.startswith(('ii', 'rc')) or pkg.strip()]
+                        return [pkg for pkg in packages if pkg]
+                    except (subprocess.CalledProcessError, FileNotFoundError):
+                        continue
+            elif self.env_info["os"] == "darwin":
+                try:
+                    result = subprocess.run(["brew", "list"], capture_output=True, text=True, check=True)
+                    return [pkg.strip() for pkg in result.stdout.split('\n') if pkg.strip()]
+                except (subprocess.CalledProcessError, FileNotFoundError):
+                    pass
+        except Exception:
+            pass
+        return []
+
+    def _get_gpu_info(self) -> str:
+        """Get GPU information."""
+        try:
+            if self.env_info["os"] == "linux":
+                result = subprocess.run(["lspci"], capture_output=True, text=True, check=True)
+                for line in result.stdout.split('\n'):
+                    if 'vga' in line.lower() or '3d' in line.lower() or 'display' in line.lower():
+                        return line.strip().split(':')[-1].strip()
+            elif self.env_info["os"] == "darwin":
+                result = subprocess.run(["system_profiler", "SPDisplaysDataType"],
+                                      capture_output=True, text=True, check=True)
+                for line in result.stdout.split('\n'):
+                    if 'chip' in line.lower() or 'processor' in line.lower():
+                        return line.strip()
+        except Exception:
+            pass
+        return "Unknown"
+
+    def _get_memory_gb(self) -> float:
+        """Get total system memory in GB."""
+        try:
+            if self.env_info["os"] == "linux":
+                with open("/proc/meminfo", "r") as f:
+                    for line in f:
+                        if line.startswith("MemTotal:"):
+                            # Format: MemTotal:       16342348 kB
+                            parts = line.split()
+                            kb = int(parts[1])
+                            return round(kb / 1024 / 1024, 2)  # Convert to GB
+            elif self.env_info["os"] == "darwin":
+                result = subprocess.run(["sysctl", "-n", "hw.memsize"],
+                                      capture_output=True, text=True, check=True)
+                bytes_size = int(result.stdout.strip())
+                return round(bytes_size / 1024 / 1024 / 1024, 2)  # Convert to GB
+        except Exception:
+            pass
+        return 0.0
+
+    def _get_cpu_cores(self) -> int:
+        """Get number of CPU cores."""
+        try:
+            import multiprocessing
+            return multiprocessing.cpu_count()
+        except Exception:
+            return 0
+
+    def _get_disk_space_gb(self) -> float:
+        """Get available disk space in GB."""
+        try:
+            import shutil
+            total, used, free = shutil.disk_usage("/")
+            return round(free / 1024 / 1024 / 1024, 2)  # Convert to GB
+        except Exception:
+            return 0.0
 
     def _is_wsl(self) -> bool:
         """Check if running under Windows Subsystem for Linux."""

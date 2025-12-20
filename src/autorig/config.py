@@ -3,6 +3,12 @@ import os
 import re
 from pydantic import BaseModel, field_validator, model_validator
 from .profiles import load_profile_config
+try:
+    from .schema import get_config_schema
+    import jsonschema
+    SCHEMA_AVAILABLE = True
+except ImportError:
+    SCHEMA_AVAILABLE = False
 
 
 class SystemConfig(BaseModel):
@@ -68,6 +74,17 @@ class Dotfile(BaseModel):
         # Validate path does not contain dangerous patterns
         if "../" in v or "..\\" in v:
             raise ValueError(f"Path traversal detected in dotfile path: {v}")
+
+        # Additional validation for dangerous paths
+        dangerous_paths = [
+            "/etc", "/root", "/boot", "/sys", "/proc", "/dev",
+            "/var/log", "/usr/bin", "/usr/sbin", "/bin", "/sbin"
+        ]
+        expanded_path = os.path.expanduser(v)
+        for path in dangerous_paths:
+            if expanded_path.startswith(path) and expanded_path != path and expanded_path != path + "/":
+                raise ValueError(f"Access to restricted system path detected: {v}")
+
         return v
 
 
@@ -75,6 +92,7 @@ class Script(BaseModel):
     command: str
     description: Optional[str] = None
     cwd: Optional[str] = None
+    when: Optional[str] = "post"  # Options: 'pre', 'post', 'both'
 
     @field_validator("command")
     @classmethod
@@ -87,20 +105,49 @@ class Script(BaseModel):
             r"\$\(\(",  # arithmetic expansion
             r"`",  # command substitution
             r"\$\{.*\}",  # environment variable injection
+            r"\$\(.*\)",  # command substitution
+            r"eval\s",  # eval command
+            r"exec\s",  # exec command
+            r"source\s",  # source command
+            r"bash\s+-c",  # bash command execution
+            r"sh\s+-c",  # sh command execution
+            r"python.*-c",  # python command execution
+            r"perl.*-e",  # perl command execution
+            r"ruby.*-e",  # ruby command execution
         ]
 
         for pattern in dangerous_patterns:
-            if re.search(pattern, v):
+            if re.search(pattern, v, re.IGNORECASE):
                 raise ValueError(f"Dangerous command pattern detected: {pattern}")
-        return v
 
-    @field_validator("cwd")
+        # Additional validation: check for absolute paths that might be dangerous
+        dangerous_paths = ["/etc", "/root", "/boot", "/sys", "/proc"]
+        parts = v.split()
+        for part in parts:
+            if any(part.startswith(path) for path in dangerous_paths):
+                raise ValueError(f"Dangerous path in command: {part}")
+
+        return v.strip()
+
+    @field_validator("cwd", "when")
     @classmethod
     def validate_cwd(cls, v):
         if v is not None:
-            if "../" in v or "..\\" in v:
-                raise ValueError(f"Path traversal detected in script cwd: {v}")
+            if v not in ["pre", "post", "both"]:
+                if "../" in v or "..\\" in v:
+                    raise ValueError(f"Path traversal detected in script field: {v}")
         return v
+
+
+class Hooks(BaseModel):
+    pre_system: List[Script] = []
+    post_system: List[Script] = []
+    pre_git: List[Script] = []
+    post_git: List[Script] = []
+    pre_dotfiles: List[Script] = []
+    post_dotfiles: List[Script] = []
+    pre_scripts: List[Script] = []
+    post_scripts: List[Script] = []
 
 
 class RigConfig(BaseModel):
@@ -110,6 +157,7 @@ class RigConfig(BaseModel):
     dotfiles: List[Dotfile] = []
     scripts: List[Script] = []
     variables: Dict[str, Any] = {}
+    hooks: Hooks = Hooks()
 
     @field_validator("name")
     @classmethod
@@ -143,5 +191,16 @@ class RigConfig(BaseModel):
         # Check for required fields in the raw data
         if "name" not in data or not data["name"]:
             raise ValueError("Configuration must have a 'name' field")
+
+        # Perform schema validation if available
+        if SCHEMA_AVAILABLE:
+            try:
+                schema = get_config_schema()
+                jsonschema.validate(data, schema)
+            except jsonschema.ValidationError as e:
+                raise ValueError(f"Configuration schema validation failed: {e.message}")
+            except Exception as e:
+                # If schema validation fails for any other reason, warn but continue
+                print(f"Warning: Schema validation error: {e}")
 
         return cls(**data)

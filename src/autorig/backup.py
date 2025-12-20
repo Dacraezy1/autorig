@@ -1,7 +1,9 @@
 import tarfile
 import os
+import json
 from pathlib import Path
 from datetime import datetime
+from typing import Dict, Any
 from rich.console import Console
 from .config import RigConfig
 import sys
@@ -27,6 +29,14 @@ class BackupManager:
 
         console.print(f"[bold]Creating backup snapshot:[/bold] {filepath}")
 
+        # Create a manifest of what's being backed up
+        manifest = {
+            "config_name": self.config.name,
+            "timestamp": timestamp,
+            "backup_type": "full",
+            "dotfiles": []
+        }
+
         count = 0
         with tarfile.open(filepath, "w:gz") as tar:
             for df in self.config.dotfiles:
@@ -41,7 +51,23 @@ class BackupManager:
                         )
                         continue
                     tar.add(target, arcname=arcname)
+
+                    # Add to manifest
+                    manifest["dotfiles"].append({
+                        "source": df.source,
+                        "target": df.target,
+                        "exists": True,
+                        "is_symlink": target.is_symlink(),
+                        "original_path": str(target.resolve()) if target.is_symlink() else str(target)
+                    })
                     count += 1
+
+            # Add manifest to the archive using in-memory data
+            import io
+            manifest_data = json.dumps(manifest, indent=2).encode('utf-8')
+            manifest_info = tarfile.TarInfo('manifest.json')
+            manifest_info.size = len(manifest_data)
+            tar.addfile(manifest_info, io.BytesIO(manifest_data))
 
         console.print(f"[green]Backed up {count} files to {filepath}[/green]")
         return filepath
@@ -66,15 +92,68 @@ class BackupManager:
 
         # Use a safer extraction method
         with tarfile.open(path, "r:gz") as tar:
-            # Use system-specific trusted filter if available, else extract to temp and validate
-            if sys.version_info >= (3, 12):
-                tar.extractall(path="/", filter="data")
-            else:
-                # For older Python versions, extract with more caution
-                for member in tar.getmembers():
-                    tar.extract(member, path="/")
+            # Extract manifest first to get information about what was backed up
+            manifest_member = tar.getmember('manifest.json')
+            if manifest_member:
+                manifest_file = tar.extractfile(manifest_member)
+                if manifest_file:
+                    manifest_content = manifest_file.read().decode('utf-8')
+                    manifest = json.loads(manifest_content)
+
+                    # Extract files with safety checks
+                    for member in tar.getmembers():
+                        # Skip the manifest file itself
+                        if member.name == 'manifest.json':
+                            continue
+
+                        # Security check for each member
+                        if ".." in member.name or member.name.startswith("/"):
+                            console.print(f"[red]Skipping dangerous file in archive: {member.name}[/red]")
+                            continue
+
+                        # Extract with safety
+                        tar.extract(member, path="/", filter="data" if sys.version_info >= (3, 12) else None)
 
         console.print(f"[green]Restored files from {path}[/green]")
+
+    def restore_from_manifest(self, snapshot_path: str, manifest_data: dict[str, Any]):
+        """
+        Restore files based on the manifest data.
+        This provides more granular control over restoration process.
+        """
+        path = Path(snapshot_path)
+        if not path.exists():
+            raise FileNotFoundError(f"Snapshot not found: {path}")
+
+        try:
+            with tarfile.open(path, "r:gz") as tar:
+                # Extract only the files listed in the manifest
+                for dotfile_info in manifest_data.get("dotfiles", []):
+                    target_path_str = dotfile_info.get("target")
+                    if not target_path_str:
+                        continue
+
+                    target_path = Path(os.path.expanduser(target_path_str))
+                    archive_name = str(target_path).lstrip(os.sep)
+
+                    # Security validation
+                    if ".." in archive_name or archive_name.startswith("/"):
+                        console.print(f"[red]Skipping dangerous path: {archive_name}[/red]")
+                        continue
+
+                    try:
+                        member = tar.getmember(archive_name)
+                        # Extract to a safe location first
+                        tar.extract(member, path="/", filter="data" if sys.version_info >= (3, 12) else None)
+                        console.print(f"[green]Restored: {target_path}[/green]")
+                    except KeyError:
+                        console.print(f"[yellow]File not found in archive: {archive_name}[/yellow]")
+                    except Exception as e:
+                        console.print(f"[red]Failed to restore {target_path}: {e}[/red]")
+
+            console.print(f"[green]Restored files based on manifest[/green]")
+        except tarfile.ReadError:
+            raise ValueError(f"Invalid tar archive: {path}")
 
     def get_latest_snapshot(self) -> Path:
         snapshots = list(self.backup_dir.glob("*.tar.gz"))

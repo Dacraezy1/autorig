@@ -13,6 +13,8 @@ from .backup import BackupManager
 from .templating import TemplateRenderer
 from .logger import setup_logging
 from .plugins import plugin_manager
+from .notifications import NotificationManager, ProgressTracker
+from .state import StateManager, OperationTracker
 
 console = Console()
 
@@ -48,6 +50,9 @@ class AutoRig:
         self.backup_manager = BackupManager(self.config)
         self.renderer = None
         self.logger = setup_logging(verbose=verbose)
+        self.notification_manager = NotificationManager()
+        self.progress_tracker = ProgressTracker(self.notification_manager)
+        self.state_manager = StateManager(self.config)
 
     def apply(self):
         mode = "[DRY RUN] " if self.dry_run else ""
@@ -56,28 +61,119 @@ class AutoRig:
         )
         self.logger.info(f"Starting apply: {self.config.name} (dry_run={self.dry_run})")
 
+        # Calculate total steps for progress tracking
+        total_steps = 12  # Each major step counts as one
+        if self.config.hooks.pre_system:
+            total_steps += len(self.config.hooks.pre_system)
+        if self.config.hooks.post_system:
+            total_steps += len(self.config.hooks.post_system)
+        if self.config.system.packages:
+            total_steps += len(self.config.system.packages)
+        if self.config.hooks.pre_git:
+            total_steps += len(self.config.hooks.pre_git)
+        if self.config.git.repositories:
+            total_steps += len(self.config.git.repositories)
+        if self.config.hooks.post_git:
+            total_steps += len(self.config.hooks.post_git)
+        if self.config.hooks.pre_dotfiles:
+            total_steps += len(self.config.hooks.pre_dotfiles)
+        if self.config.dotfiles:
+            total_steps += len(self.config.dotfiles)
+        if self.config.hooks.post_dotfiles:
+            total_steps += len(self.config.hooks.post_dotfiles)
+        if self.config.hooks.pre_scripts:
+            total_steps += len(self.config.hooks.pre_scripts)
+        if self.config.scripts:
+            total_steps += len(self.config.scripts)
+        if self.config.hooks.post_scripts:
+            total_steps += len(self.config.hooks.post_scripts)
+
+        self.progress_tracker.start_operation("Configuration Apply", total_steps)
+
+        # Create operation tracker for error recovery
+        tracker = OperationTracker(self.state_manager, "apply")
+
         # Create a progress display
         with console.status(
             "[bold green]Applying configuration...[/bold green]"
         ) as status:
-            self.logger.debug("Starting system package installation")
-            status.update("[bold blue]Installing system packages...[/bold blue]")
-            self._install_system_packages()
+            try:
+                # Execute pre-system hooks
+                status.update("[bold blue]Running pre-system hooks...[/bold blue]")
+                self._run_hooks(self.config.hooks.pre_system)
+                self.progress_tracker.update_progress("Pre-system hooks completed")
 
-            self.logger.debug("Starting git repository processing")
-            status.update("[bold blue]Processing git repositories...[/bold blue]")
-            self._process_git_repos()
+                self.logger.debug("Starting system package installation")
+                status.update("[bold blue]Installing system packages...[/bold blue]")
+                self._install_system_packages_with_tracking(tracker)
+                self.progress_tracker.update_progress("System packages installed")
 
-            self.logger.debug("Starting dotfile linking")
-            status.update("[bold blue]Linking dotfiles...[/bold blue]")
-            self._link_dotfiles()
+                # Execute post-system hooks
+                status.update("[bold blue]Running post-system hooks...[/bold blue]")
+                self._run_hooks(self.config.hooks.post_system)
+                self.progress_tracker.update_progress("Post-system hooks completed")
 
-            self.logger.debug("Starting script execution")
-            status.update("[bold blue]Running custom scripts...[/bold blue]")
-            self._run_scripts()
+                # Execute pre-git hooks
+                status.update("[bold blue]Running pre-git hooks...[/bold blue]")
+                self._run_hooks(self.config.hooks.pre_git)
+                self.progress_tracker.update_progress("Pre-git hooks completed")
 
-        console.print("[bold green]✨ Rig setup complete![/bold green]")
-        self.logger.info("Configuration application completed successfully")
+                self.logger.debug("Starting git repository processing")
+                status.update("[bold blue]Processing git repositories...[/bold blue]")
+                self._process_git_repos_with_tracking(tracker)
+                self.progress_tracker.update_progress("Git repositories processed")
+
+                # Execute post-git hooks
+                status.update("[bold blue]Running post-git hooks...[/bold blue]")
+                self._run_hooks(self.config.hooks.post_git)
+                self.progress_tracker.update_progress("Post-git hooks completed")
+
+                # Execute pre-dotfile hooks
+                status.update("[bold blue]Running pre-dotfile hooks...[/bold blue]")
+                self._run_hooks(self.config.hooks.pre_dotfiles)
+                self.progress_tracker.update_progress("Pre-dotfile hooks completed")
+
+                self.logger.debug("Starting dotfile linking")
+                status.update("[bold blue]Linking dotfiles...[/bold blue]")
+                self._link_dotfiles_with_tracking(tracker)
+                self.progress_tracker.update_progress("Dotfiles linked")
+
+                # Execute post-dotfile hooks
+                status.update("[bold blue]Running post-dotfile hooks...[/bold blue]")
+                self._run_hooks(self.config.hooks.post_dotfiles)
+                self.progress_tracker.update_progress("Post-dotfile hooks completed")
+
+                # Execute pre-script hooks
+                status.update("[bold blue]Running pre-script hooks...[/bold blue]")
+                self._run_hooks(self.config.hooks.pre_scripts)
+                self.progress_tracker.update_progress("Pre-script hooks completed")
+
+                self.logger.debug("Starting script execution")
+                status.update("[bold blue]Running custom scripts...[/bold blue]")
+                self._run_scripts_with_tracking(tracker)
+                self.progress_tracker.update_progress("Custom scripts executed")
+
+                # Execute post-script hooks
+                status.update("[bold blue]Running post-script hooks...[/bold blue]")
+                self._run_hooks(self.config.hooks.post_scripts)
+                self.progress_tracker.update_progress("Post-script hooks completed")
+
+                # Complete the operation and save the rollback point
+                tracker.complete_operation()
+                self.progress_tracker.complete_operation()
+                console.print("[bold green]✨ Rig setup complete![/bold green]")
+                self.logger.info("Configuration application completed successfully")
+
+            except Exception as e:
+                self.progress_tracker.fail_operation(str(e))
+                # Attempt rollback if not in dry-run mode
+                if not self.dry_run:
+                    console.print("[yellow]Attempting rollback due to error...[/yellow]")
+                    try:
+                        tracker.rollback_operation()
+                    except Exception as rollback_error:
+                        console.print(f"[red]Rollback failed: {rollback_error}[/red]")
+                raise
 
     def _install_system_packages(self):
         packages = self.config.system.packages
@@ -88,22 +184,35 @@ class AutoRig:
                 console.print(
                     f"[yellow]DRY RUN: Would install: {', '.join(packages)}[/yellow]"
                 )
+                # Still update progress for each package in dry run
+                for pkg in packages:
+                    self.progress_tracker.update_progress(f"Dry run: {pkg}")
                 return
 
             try:
-                if self.installer.install(packages):
+                # Track each package installation
+                success_count = 0
+                for i, pkg in enumerate(packages):
+                    if self.installer.install([pkg]):
+                        success_count += 1
+                        self.progress_tracker.update_progress(f"Installed: {pkg}")
+                    else:
+                        self.progress_tracker.update_progress(f"Failed: {pkg}")
+
+                if success_count == len(packages):
                     console.print(
                         "[green]System packages installed successfully.[/green]"
                     )
                     self.logger.info(f"Successfully installed packages: {packages}")
                 else:
-                    console.print("[red]Failed to install some system packages.[/red]")
-                    self.logger.error(
-                        f"Failed to install some system packages: {packages}"
+                    console.print(f"[yellow]Partially successful: {success_count}/{len(packages)} packages installed.[/yellow]")
+                    self.logger.warning(
+                        f"Only {success_count}/{len(packages)} packages installed: {packages}"
                     )
             except Exception as e:
                 console.print(f"[red]Error during package installation: {e}[/red]")
                 self.logger.error(f"Package installation error: {e}")
+                raise
 
     def _process_git_repos(self):
         repos = self.config.git.repositories
@@ -127,6 +236,7 @@ class AutoRig:
                     self.logger.error(
                         f"Security error: Invalid repository path: {repo.path}"
                     )
+                    self.progress_tracker.update_progress(f"Security error: {repo.url}")
                     continue
 
                 console.print(
@@ -144,6 +254,7 @@ class AutoRig:
                             console.print(
                                 f"[yellow]DRY RUN: Would pull in {target_path}[/yellow]"
                             )
+                            self.progress_tracker.update_progress(f"Dry run: update {repo.url}")
                             continue
 
                         try:
@@ -157,6 +268,7 @@ class AutoRig:
                             if self.verbose and result.stdout:
                                 console.print(f"[dim]Git output: {result.stdout}[/dim]")
                             self.logger.info(f"Updated git repo: {repo.url}")
+                            self.progress_tracker.update_progress(f"Updated: {repo.url}")
                         except subprocess.CalledProcessError as e:
                             console.print(
                                 f"[red]Failed to update {repo.url}: {e}[/red]"
@@ -164,6 +276,7 @@ class AutoRig:
                             if e.stderr:
                                 console.print(f"[red]Git error: {e.stderr}[/red]")
                             self.logger.error(f"Failed to update {repo.url}: {e}")
+                            self.progress_tracker.update_progress(f"Failed: {repo.url}")
                     else:
                         console.print(
                             f"[yellow]Path exists but is not a git repository: {repo.path}[/yellow]"
@@ -171,12 +284,14 @@ class AutoRig:
                         self.logger.warning(
                             f"Path exists but is not a git repository: {repo.path}"
                         )
+                        self.progress_tracker.update_progress(f"Non-git path: {repo.path}")
                     continue
 
                 console.print(f"Cloning {repo.url} to {repo.path}...")
                 self.logger.info(f"Cloning repository: {repo.url} to {repo.path}")
                 if self.dry_run:
                     console.print(f"[yellow]DRY RUN: Would clone {repo.url}[/yellow]")
+                    self.progress_tracker.update_progress(f"Dry run: clone {repo.url}")
                     continue
 
                 # Ensure parent directory exists
@@ -193,15 +308,18 @@ class AutoRig:
                     if self.verbose and result.stdout:
                         console.print(f"[dim]Git output: {result.stdout}[/dim]")
                     self.logger.info(f"Cloned git repo: {repo.url}")
+                    self.progress_tracker.update_progress(f"Cloned: {repo.url}")
                 except subprocess.CalledProcessError as e:
                     console.print(f"[red]Failed to clone {repo.url}: {e}[/red]")
                     if e.stderr:
                         console.print(f"[red]Git error: {e.stderr}[/red]")
                     self.logger.error(f"Failed to clone {repo.url}: {e}")
+                    self.progress_tracker.update_progress(f"Failed: {repo.url}")
 
             except Exception as e:
                 console.print(f"[red]Error processing repository {repo.url}: {e}[/red]")
                 self.logger.error(f"Error processing repository {repo.url}: {e}")
+                self.progress_tracker.update_progress(f"Error: {repo.url}")
 
     def _link_dotfiles(self):
         dotfiles = self.config.dotfiles
@@ -237,11 +355,13 @@ class AutoRig:
                     self.logger.error(
                         f"Security error: Source path outside config directory: {source}"
                     )
+                    self.progress_tracker.update_progress(f"Security error: {df.target}")
                     continue
 
                 if not source.exists():
                     console.print(f"[red]Source file not found:[/red] {source}")
                     self.logger.warning(f"Source file not found: {source}")
+                    self.progress_tracker.update_progress(f"Missing source: {source}")
                     continue
 
                 if target.exists() or target.is_symlink():
@@ -282,6 +402,7 @@ class AutoRig:
                     console.print(
                         f"[yellow]DRY RUN: Would link {target} -> {source}[/yellow]"
                     )
+                    self.progress_tracker.update_progress(f"Dry run: {df.target}")
                     continue
 
                 # Check for template
@@ -294,18 +415,22 @@ class AutoRig:
                         )
                         console.print(f"[green]Rendered {target} from {source}[/green]")
                         self.logger.info(f"Rendered template {source} to {target}")
+                        self.progress_tracker.update_progress(f"Rendered: {df.target}")
                     except Exception as e:
                         console.print(f"[red]Failed to render {target}: {e}[/red]")
                         self.logger.error(f"Template render failed for {target}: {e}")
+                        self.progress_tracker.update_progress(f"Failed render: {df.target}")
                     continue
 
                 try:
                     target.symlink_to(source)
                     console.print(f"[green]Linked {target} -> {source}[/green]")
                     self.logger.info(f"Linked {target} -> {source}")
+                    self.progress_tracker.update_progress(f"Linked: {df.target}")
                 except Exception as e:
                     console.print(f"[red]Failed to link {target}: {e}[/red]")
                     self.logger.error(f"Link failed for {target}: {e}")
+                    self.progress_tracker.update_progress(f"Failed link: {df.target}")
 
             except Exception as e:
                 console.print(
@@ -314,8 +439,382 @@ class AutoRig:
                 self.logger.error(
                     f"Error processing dotfile {df.source} -> {df.target}: {e}"
                 )
+                self.progress_tracker.update_progress(f"Error: {df.target}")
 
-    def _run_scripts(self):
+    def _run_hooks(self, hooks):
+        """Run hooks (pre/post actions for different stages)."""
+        if not hooks:
+            return
+
+        console.print(f"[bold]Running {len(hooks)} hook(s)...[/bold]")
+        self.logger.info(f"Running {len(hooks)} hook(s)")
+
+        for i, hook in enumerate(hooks, 1):
+            desc = hook.description or hook.command
+            console.print(f"[dim]Running hook {i}/{len(hooks)}: {desc}[/dim]")
+            self.logger.debug(f"Running hook {i}/{len(hooks)}: {desc}")
+
+            # Validate hook command before execution for security
+            if not self._is_safe_command(hook.command):
+                console.print(f"[red]✗ Unsafe command blocked: {hook.command}[/red]")
+                self.logger.error(f"Unsafe command blocked: {hook.command}")
+                continue
+
+            cwd = os.path.expanduser(hook.cwd) if hook.cwd else None
+
+            if self.dry_run:
+                console.print(
+                    f"[yellow]DRY RUN: Would execute hook: {hook.command}[/yellow]"
+                )
+                continue
+
+            try:
+                result = subprocess.run(
+                    hook.command,
+                    shell=True,
+                    check=True,
+                    cwd=cwd,
+                    capture_output=True,
+                    text=True,
+                )
+                console.print(f"[green]✓ Hook completed: {desc}[/green]")
+                if result.stdout:
+                    if self.verbose:
+                        console.print(f"[dim]Output: {result.stdout}[/dim]")
+                    else:
+                        console.print(
+                            f"[dim]Output: {result.stdout[:200]}...[/dim]"
+                            if len(result.stdout) > 200
+                            else f"[dim]Output: {result.stdout}[/dim]"
+                        )
+                self.logger.info(f"Hook completed: {desc}")
+            except subprocess.CalledProcessError as e:
+                console.print(f"[red]✗ Hook failed: {desc} ({e})[/red]")
+                if e.stderr:
+                    console.print(f"[red]Error: {e.stderr}[/red]")
+                self.logger.error(f"Hook failed: {desc} - {e}")
+
+    def _install_system_packages_with_tracking(self, tracker: 'OperationTracker'):
+        packages = self.config.system.packages
+        if packages:
+            console.print(f"[bold]Installing {len(packages)} system packages...[/bold]")
+            self.logger.info(f"Installing {len(packages)} system packages")
+            if self.dry_run:
+                console.print(
+                    f"[yellow]DRY RUN: Would install: {', '.join(packages)}[/yellow]"
+                )
+                # Still update progress for each package in dry run
+                for pkg in packages:
+                    tracker.record_change("would_install_package", pkg)
+                    self.progress_tracker.update_progress(f"Dry run: {pkg}")
+                return
+
+            try:
+                # Track each package installation
+                success_count = 0
+                failures = []
+                for i, pkg in enumerate(packages):
+                    if self.installer.install([pkg]):
+                        success_count += 1
+                        # Record successful installation for potential rollback
+                        tracker.record_change("installed_package", pkg, status="success")
+                        self.progress_tracker.update_progress(f"Installed: {pkg}")
+                    else:
+                        failures.append(pkg)
+                        tracker.record_change("installed_package", pkg, status="failed")
+                        self.progress_tracker.update_progress(f"Failed: {pkg}")
+
+                if success_count == len(packages):
+                    console.print(
+                        "[green]System packages installed successfully.[/green]"
+                    )
+                    self.logger.info(f"Successfully installed packages: {packages}")
+                else:
+                    console.print(f"[yellow]Partially successful: {success_count}/{len(packages)} packages installed.[/yellow]")
+                    if failures:
+                        console.print(f"[yellow]Failed packages: {', '.join(failures)}[/yellow]")
+                    self.logger.warning(
+                        f"Only {success_count}/{len(packages)} packages installed: {packages}"
+                    )
+            except Exception as e:
+                console.print(f"[red]Error during package installation: {e}[/red]")
+                self.logger.error(f"Package installation error: {e}")
+                raise
+
+    def _process_git_repos_with_tracking(self, tracker: 'OperationTracker'):
+        repos = self.config.git.repositories
+        if not repos:
+            self.logger.debug("No git repositories to process")
+            return
+
+        console.print(f"[bold]Processing {len(repos)} git repositories...[/bold]")
+        self.logger.info(f"Processing {len(repos)} git repositories")
+
+        for i, repo in enumerate(repos, 1):
+            try:
+                target_path = Path(os.path.expanduser(repo.path))
+
+                # Security check for path traversal
+                expanded_path = os.path.expanduser(repo.path)
+                if ".." in expanded_path or expanded_path.startswith("/tmp"):
+                    console.print(
+                        f"[red]Security error: Invalid repository path: {repo.path}[/red]"
+                    )
+                    self.logger.error(
+                        f"Security error: Invalid repository path: {repo.path}"
+                    )
+                    tracker.record_change("security_error", repo.path, error="path_traversal", url=repo.url)
+                    self.progress_tracker.update_progress(f"Security error: {repo.url}")
+                    continue
+
+                console.print(
+                    f"[dim]Processing repository {i}/{len(repos)}: {repo.url}[/dim]"
+                )
+                self.logger.debug(f"Processing repository {i}/{len(repos)}: {repo.url}")
+
+                if target_path.exists():
+                    if (target_path / ".git").exists():
+                        console.print(
+                            f"[yellow]Path exists, updating:[/yellow] {repo.path}"
+                        )
+                        self.logger.info(f"Repository exists, updating: {repo.url}")
+                        if self.dry_run:
+                            console.print(
+                                f"[yellow]DRY RUN: Would pull in {target_path}[/yellow]"
+                            )
+                            tracker.record_change("would_pull_repo", repo.path, url=repo.url)
+                            self.progress_tracker.update_progress(f"Dry run: update {repo.url}")
+                            continue
+
+                        try:
+                            result = subprocess.run(
+                                ["git", "-C", str(target_path), "pull"],
+                                check=True,
+                                capture_output=True,
+                                text=True,
+                            )
+                            console.print(f"[green]Updated {repo.url}[/green]")
+                            if self.verbose and result.stdout:
+                                console.print(f"[dim]Git output: {result.stdout}[/dim]")
+                            self.logger.info(f"Updated git repo: {repo.url}")
+                            tracker.record_change("updated_repo", repo.path, url=repo.url)
+                            self.progress_tracker.update_progress(f"Updated: {repo.url}")
+                        except subprocess.CalledProcessError as e:
+                            console.print(
+                                f"[red]Failed to update {repo.url}: {e}[/red]"
+                            )
+                            if e.stderr:
+                                console.print(f"[red]Git error: {e.stderr}[/red]")
+                            self.logger.error(f"Failed to update {repo.url}: {e}")
+                            tracker.record_change("updated_repo", repo.path, url=repo.url, status="failed", error=str(e))
+                            self.progress_tracker.update_progress(f"Failed: {repo.url}")
+                    else:
+                        console.print(
+                            f"[yellow]Path exists but is not a git repository: {repo.path}[/yellow]"
+                        )
+                        self.logger.warning(
+                            f"Path exists but is not a git repository: {repo.path}"
+                        )
+                        tracker.record_change("invalid_repo_path", repo.path, url=repo.url, error="not_git_repo")
+                        self.progress_tracker.update_progress(f"Non-git path: {repo.path}")
+                    continue
+
+                console.print(f"Cloning {repo.url} to {repo.path}...")
+                self.logger.info(f"Cloning repository: {repo.url} to {repo.path}")
+                if self.dry_run:
+                    console.print(f"[yellow]DRY RUN: Would clone {repo.url}[/yellow]")
+                    tracker.record_change("would_clone_repo", repo.path, url=repo.url)
+                    self.progress_tracker.update_progress(f"Dry run: clone {repo.url}")
+                    continue
+
+                # Ensure parent directory exists
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+
+                try:
+                    result = subprocess.run(
+                        ["git", "clone", "-b", repo.branch, repo.url, str(target_path)],
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                    )
+                    console.print(f"[green]Cloned {repo.url}[/green]")
+                    if self.verbose and result.stdout:
+                        console.print(f"[dim]Git output: {result.stdout}[/dim]")
+                    self.logger.info(f"Cloned git repo: {repo.url}")
+                    tracker.record_change("git_cloned", repo.path, url=repo.url)
+                    self.progress_tracker.update_progress(f"Cloned: {repo.url}")
+                except subprocess.CalledProcessError as e:
+                    console.print(f"[red]Failed to clone {repo.url}: {e}[/red]")
+                    if e.stderr:
+                        console.print(f"[red]Git error: {e.stderr}[/red]")
+                    self.logger.error(f"Failed to clone {repo.url}: {e}")
+                    tracker.record_change("git_cloned", repo.path, url=repo.url, status="failed", error=str(e))
+                    self.progress_tracker.update_progress(f"Failed: {repo.url}")
+
+            except Exception as e:
+                console.print(f"[red]Error processing repository {repo.url}: {e}[/red]")
+                self.logger.error(f"Error processing repository {repo.url}: {e}")
+                tracker.record_change("process_repo_error", repo.path, url=repo.url, error=str(e))
+                self.progress_tracker.update_progress(f"Error: {repo.url}")
+
+    def _link_dotfiles_with_tracking(self, tracker: 'OperationTracker'):
+        dotfiles = self.config.dotfiles
+        if not dotfiles:
+            self.logger.debug("No dotfiles to link")
+            return
+
+        console.print(f"[bold]Linking {len(dotfiles)} dotfiles...[/bold]")
+        self.logger.info(f"Linking {len(dotfiles)} dotfiles")
+        config_dir = Path(self.config_path).parent.absolute()
+        self.renderer = TemplateRenderer(config_dir)
+
+        for i, df in enumerate(dotfiles, 1):
+            try:
+                console.print(
+                    f"[dim]Processing dotfile {i}/{len(dotfiles)}: {df.target}[/dim]"
+                )
+                self.logger.debug(
+                    f"Processing dotfile {i}/{len(dotfiles)}: {df.target}"
+                )
+
+                # Resolve source relative to config file location
+                source = (config_dir / os.path.expanduser(df.source)).resolve()
+                target = Path(os.path.expanduser(df.target))
+
+                # Security check: ensure source is within config directory
+                try:
+                    source.relative_to(config_dir)
+                except ValueError:
+                    console.print(
+                        f"[red]Security error: Source path outside config directory: {source}[/red]"
+                    )
+                    self.logger.error(
+                        f"Security error: Source path outside config directory: {source}"
+                    )
+                    tracker.record_change("security_error", str(target), error="source_outside_config", source=str(source))
+                    self.progress_tracker.update_progress(f"Security error: {df.target}")
+                    continue
+
+                if not source.exists():
+                    console.print(f"[red]Source file not found:[/red] {source}")
+                    self.logger.warning(f"Source file not found: {source}")
+                    tracker.record_change("missing_source", str(target), source=str(source))
+                    self.progress_tracker.update_progress(f"Missing source: {source}")
+                    continue
+
+                # Track existing file state before modification
+                original_exists = target.exists() or target.is_symlink()
+                original_is_symlink = target.is_symlink()
+                original_path = str(target.resolve()) if target.is_symlink() else str(target) if target.exists() else None
+
+                if target.exists() or target.is_symlink():
+                    if not self.force:
+                        # Backup existing
+                        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+                        backup = Path(f"{target}.{timestamp}.bak")
+                        console.print(
+                            f"[yellow]Backing up existing {target} to {backup}[/yellow]"
+                        )
+                        self.logger.info(f"Backing up {target} to {backup}")
+
+                        # Record the backup action
+                        tracker.record_change("backup_file", str(target),
+                                            backup_path=str(backup),
+                                            exists=original_exists,
+                                            is_symlink=original_is_symlink,
+                                            original_path=original_path)
+
+                        if not self.dry_run:
+                            if target.is_symlink():
+                                target.unlink()
+                            else:
+                                shutil.move(str(target), str(backup))
+                    else:
+                        console.print(
+                            f"[yellow]Force mode: removing existing {target}[/yellow]"
+                        )
+                        self.logger.info(f"Force mode: removing existing {target}")
+                        # Record the deletion action
+                        tracker.record_change("deleted_file", str(target),
+                                            is_symlink=original_is_symlink,
+                                            original_path=original_path)
+
+                        if not self.dry_run:
+                            if target.is_symlink():
+                                target.unlink()
+                            else:
+                                (
+                                    target.unlink()
+                                    if target.is_file()
+                                    else shutil.rmtree(target)
+                                )
+
+                # Ensure parent dir exists
+                if not self.dry_run:
+                    target.parent.mkdir(parents=True, exist_ok=True)
+
+                if self.dry_run:
+                    console.print(
+                        f"[yellow]DRY RUN: Would link {target} -> {source}[/yellow]"
+                    )
+                    tracker.record_change("would_create_symlink", str(target),
+                                        source=str(source),
+                                        is_template=(source.suffix == ".j2"))
+                    self.progress_tracker.update_progress(f"Dry run: {df.target}")
+                    continue
+
+                # Check for template
+                if source.suffix == ".j2":
+                    try:
+                        # Render relative path from config_dir
+                        rel_source = source.relative_to(config_dir)
+                        self.renderer.render(
+                            str(rel_source), self.config.variables, target
+                        )
+                        console.print(f"[green]Rendered {target} from {source}[/green]")
+                        self.logger.info(f"Rendered template {source} to {target}")
+                        tracker.record_change("created_rendered_file", str(target),
+                                            source=str(source),
+                                            action="rendered_from_template")
+                        self.progress_tracker.update_progress(f"Rendered: {df.target}")
+                    except Exception as e:
+                        console.print(f"[red]Failed to render {target}: {e}[/red]")
+                        self.logger.error(f"Template render failed for {target}: {e}")
+                        tracker.record_change("failed_render", str(target),
+                                            source=str(source),
+                                            error=str(e))
+                        self.progress_tracker.update_progress(f"Failed render: {df.target}")
+                    continue
+
+                try:
+                    target.symlink_to(source)
+                    console.print(f"[green]Linked {target} -> {source}[/green]")
+                    self.logger.info(f"Linked {target} -> {source}")
+                    tracker.record_change("created_symlink", str(target),
+                                        source=str(source),
+                                        action="created_symlink")
+                    self.progress_tracker.update_progress(f"Linked: {df.target}")
+                except Exception as e:
+                    console.print(f"[red]Failed to link {target}: {e}[/red]")
+                    self.logger.error(f"Link failed for {target}: {e}")
+                    tracker.record_change("failed_symlink", str(target),
+                                        source=str(source),
+                                        error=str(e))
+                    self.progress_tracker.update_progress(f"Failed link: {df.target}")
+
+            except Exception as e:
+                console.print(
+                    f"[red]Error processing dotfile {df.source} -> {df.target}: {e}[/red]"
+                )
+                self.logger.error(
+                    f"Error processing dotfile {df.source} -> {df.target}: {e}"
+                )
+                tracker.record_change("dotfile_error", df.target,
+                                    source=df.source,
+                                    error=str(e))
+                self.progress_tracker.update_progress(f"Error: {df.target}")
+
+    def _run_scripts_with_tracking(self, tracker: 'OperationTracker'):
         scripts = self.config.scripts
         if not scripts:
             self.logger.debug("No scripts to run")
@@ -333,6 +832,8 @@ class AutoRig:
             if not self._is_safe_command(script.command):
                 console.print(f"[red]✗ Unsafe command blocked: {script.command}[/red]")
                 self.logger.error(f"Unsafe command blocked: {script.command}")
+                tracker.record_change("blocked_unsafe_script", script.command, description=desc)
+                self.progress_tracker.update_progress(f"Blocked unsafe script: {desc}")
                 continue
 
             cwd = os.path.expanduser(script.cwd) if script.cwd else None
@@ -341,6 +842,9 @@ class AutoRig:
                 console.print(
                     f"[yellow]DRY RUN: Would execute: {script.command}[/yellow]"
                 )
+                tracker.record_change("would_execute_script", script.command,
+                                    description=desc, cwd=cwd)
+                self.progress_tracker.update_progress(f"Dry run: {desc}")
                 continue
 
             try:
@@ -363,15 +867,81 @@ class AutoRig:
                             else f"[dim]Output: {result.stdout}[/dim]"
                         )
                 self.logger.info(f"Script completed: {desc}")
+                tracker.record_change("executed_script", script.command,
+                                    description=desc, status="success",
+                                    output=result.stdout[:500] if result.stdout else "")
+                self.progress_tracker.update_progress(f"Completed: {desc}")
             except subprocess.CalledProcessError as e:
                 console.print(f"[red]✗ Failed: {desc} ({e})[/red]")
                 if e.stderr:
                     console.print(f"[red]Error: {e.stderr}[/red]")
                 self.logger.error(f"Script failed: {desc} - {e}")
+                tracker.record_change("executed_script", script.command,
+                                    description=desc, status="failed", error=str(e),
+                                    stderr=e.stderr if e.stderr else "")
+                self.progress_tracker.update_progress(f"Failed: {desc}")
+
+    def _run_scripts(self):
+        scripts = self.config.scripts
+        if not scripts:
+            self.logger.debug("No scripts to run")
+            return
+
+        console.print(f"[bold]Running {len(scripts)} post-install scripts...[/bold]")
+        self.logger.info(f"Running {len(scripts)} post-install scripts")
+
+        for i, script in enumerate(scripts, 1):
+            desc = script.description or script.command
+            console.print(f"[dim]Running script {i}/{len(scripts)}: {desc}[/dim]")
+            self.logger.debug(f"Running script {i}/{len(scripts)}: {desc}")
+
+            # Validate script command before execution for security
+            if not self._is_safe_command(script.command):
+                console.print(f"[red]✗ Unsafe command blocked: {script.command}[/red]")
+                self.logger.error(f"Unsafe command blocked: {script.command}")
+                self.progress_tracker.update_progress(f"Blocked unsafe script: {desc}")
+                continue
+
+            cwd = os.path.expanduser(script.cwd) if script.cwd else None
+
+            if self.dry_run:
+                console.print(
+                    f"[yellow]DRY RUN: Would execute: {script.command}[/yellow]"
+                )
+                self.progress_tracker.update_progress(f"Dry run: {desc}")
+                continue
+
+            try:
+                result = subprocess.run(
+                    script.command,
+                    shell=True,
+                    check=True,
+                    cwd=cwd,
+                    capture_output=True,
+                    text=True,
+                )
+                console.print(f"[green]✓ Completed: {desc}[/green]")
+                if result.stdout:
+                    if self.verbose:
+                        console.print(f"[dim]Output: {result.stdout}[/dim]")
+                    else:
+                        console.print(
+                            f"[dim]Output: {result.stdout[:200]}...[/dim]"
+                            if len(result.stdout) > 200
+                            else f"[dim]Output: {result.stdout}[/dim]"
+                        )
+                self.logger.info(f"Script completed: {desc}")
+                self.progress_tracker.update_progress(f"Completed: {desc}")
+            except subprocess.CalledProcessError as e:
+                console.print(f"[red]✗ Failed: {desc} ({e})[/red]")
+                if e.stderr:
+                    console.print(f"[red]Error: {e.stderr}[/red]")
+                self.logger.error(f"Script failed: {desc} - {e}")
+                self.progress_tracker.update_progress(f"Failed: {desc}")
 
     def _is_safe_command(self, command: str) -> bool:
         """
-        Perform basic security checks on a command before execution
+        Perform comprehensive security checks on a command before execution
         """
         # Check for dangerous patterns that could indicate command injection
         dangerous_patterns = [
@@ -381,11 +951,37 @@ class AutoRig:
             r"\$\(\(",  # arithmetic expansion
             r"`",  # command substitution
             r"\$\(.*\)",  # command substitution
+            r"eval\s",  # eval command
+            r"exec\s",  # exec command
+            r"source\s",  # source command
+            r"bash\s+-c",  # bash command execution
+            r"sh\s+-c",  # sh command execution
+            r"python.*-c",  # python command execution
+            r"perl.*-e",  # perl command execution
+            r"ruby.*-e",  # ruby command execution
+            r"import\s+os|import\s+sys|import\s+subprocess",  # Python imports in command
+            r"rm\s+-rf",  # dangerous removal
+            r"mv\s+/.*\s+/",  # dangerous move to system directories
+            r"cp\s+/.*\s+/",  # dangerous copy to system directories
         ]
 
+        # Convert to lowercase for broader pattern matching
+        command_lower = command.lower()
         for pattern in dangerous_patterns:
-            if re.search(pattern, command):
+            if re.search(pattern, command_lower):
+                self.logger.warning(f"Blocked command with dangerous pattern: {pattern}")
                 return False
+
+        # Additional validation: check for dangerous paths
+        dangerous_paths = ["/etc", "/root", "/boot", "/sys", "/proc"]
+        parts = command.split()
+        for part in parts:
+            # Remove quotes and normalize
+            clean_part = part.strip("'\"")
+            if any(clean_part.startswith(path) for path in dangerous_paths):
+                self.logger.warning(f"Blocked command with dangerous path: {clean_part}")
+                return False
+
         return True
 
     def clean(self):

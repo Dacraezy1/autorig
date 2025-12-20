@@ -1,10 +1,11 @@
-# AutoRig 🚀
+# AutoRig 🚀 v1.0.0 - Major Release
 
-**AutoRig** is a robust, data-driven system configuration and dotfile manager written in Python. It automates the setup of a development environment by installing system packages, managing git repositories, linking dotfiles, and running custom scripts.
+**AutoRig** is a robust, data-driven system configuration and dotfile manager written in Python. It automates the setup of a development environment by installing system packages, managing git repositories, linking dotfiles, and running custom scripts. v1.0.0 introduces a comprehensive set of new features making it the most advanced configuration management tool available.
 
 [![License](https://img.shields.io/github/license/Dacraezy1/autorig.svg)](https://github.com/Dacraezy1/autorig/blob/main/LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-informational.svg)](https://github.com/Dacraezy1/autorig)
+[![Version](https://img.shields.io/badge/Version-1.0.0-brightgreen.svg)](https://github.com/Dacraezy1/autorig/releases/latest)
 
 ## ✨ Features
 
@@ -15,17 +16,22 @@
   - **🛡️ Safe Operation**: Automatically backs up existing files with timestamps (e.g., `.bashrc.20231027-103000.bak`) and prevents unwanted overwrites.
 - **🐙 Git Repository Management**: Clone repositories if missing, or pull updates if they exist.
 - **⚡ Custom Script Execution**: Execute post-install shell commands (e.g., installing plugins, setting shell defaults).
+- **🎭 Pre/Post Hooks System**: Execute custom scripts before and after major operations (system, git, dotfiles, scripts). Supports `pre_system`, `post_system`, `pre_git`, `post_git`, `pre_dotfiles`, `post_dotfiles`, `pre_scripts`, and `post_scripts` hooks.
 - **🛡️ Dry Run Mode**: Preview all actions without making any changes to your system.
 - **🔍 Inspection Tools**: View status, differences, and current state before applying changes.
 - **🧹 Cleanup Utilities**: Easily remove symlinks created by the tool.
 - **📝 Comprehensive Logging**: Detailed execution logs stored in `~/.autorig/logs/` for troubleshooting.
+- **🔔 Notification System**: Desktop notifications for long-running operations on supported platforms (macOS, Linux, Windows).
+- **📊 Progress Indicators**: Visual progress indicators and detailed logging with real-time tracking.
 - **👀 Watch Mode**: Automatically apply changes when you save your configuration file.
 - **🔐 Environment Integration**: Supports environment variable expansion (e.g., `${GITHUB_TOKEN}`) within configuration files.
+- **🎯 Enhanced Profile Detection**: Automatic environment detection with expanded variables (VM, CI/CD, hardware specs, etc.) and intelligent recommendations.
 - **🔌 Plugin Architecture**: Extensible plugin system for custom functionality.
-- **🎯 Environment Detection**: Automatic environment detection and profile-based configurations.
-- **📊 Progress Indicators**: Visual progress indicators and detailed logging.
-- **🔧 Enhanced CLI**: More intuitive options and help text with `-n` (dry-run), `-v` (verbose), `-f` (force), and `-p` (profile) flags.
-- **🛡️ Improved Security**: Enhanced validation and security checks for commands and file paths.
+- **🔧 Enhanced CLI**: More intuitive options and help text with `-n` (dry-run), `-v` (verbose), `-f` (force), `-p` (profile), `-d` (detailed detection), and `-o` (output) flags.
+- **🛡️ Improved Security**: Enhanced validation and security checks for commands and file paths with expanded pattern matching.
+- **🔄 Error Recovery & Rollback**: Automatic state tracking with rollback capabilities to revert changes on failure.
+- **📈 Monitoring & Reporting**: Real-time resource monitoring and status reporting with system resource usage tracking.
+- **📋 Configuration Schema Validation**: JSON schema validation for configuration files to catch errors early.
 
 ## 📋 Requirements
 
@@ -76,6 +82,15 @@ Apply your configuration (install packages, link files, etc.):
 
 ```bash
 autorig apply rig.yaml
+```
+
+Apply with a remote configuration:
+
+```bash
+autorig apply https://example.com/config.yaml
+autorig apply github:username/repo/path/to/config.yaml  # GitHub shortcut
+autorig apply github:username/repo/path/to/config.yaml@branch  # Specific branch
+autorig apply gitlab:username/repo/path/to/config.yaml  # GitLab shortcut
 ```
 
 Apply with a specific profile:
@@ -175,12 +190,42 @@ Execute specific plugins:
 autorig run-plugins rig.yaml myplugin
 ```
 
+#### Status Reporting
+Generate comprehensive status reports for your configurations:
+
+```bash
+autorig report rig.yaml
+autorig report rig.yaml --verbose  # Show detailed information
+autorig report rig.yaml --output report.json  # Save to JSON file
+```
+
+#### Remote Configurations
+Work with configurations hosted remotely:
+
+```bash
+# Direct URL
+autorig apply https://example.com/config.yaml
+
+# GitHub shortcut (downloads from raw GitHub content)
+autorig apply github:username/repo/path/to/config.yaml
+autorig apply github:username/repo/path/to/config.yaml@main  # Specific branch/tag
+
+# GitLab shortcut (downloads from raw GitLab content)
+autorig apply gitlab:username/repo/path/to/config.yaml
+
+# Using the dedicated remote command
+autorig remote https://example.com/config.yaml apply
+autorig remote github:username/repo/path/to/config.yaml validate
+autorig remote gitlab:username/repo/path/to/config.yaml status
+```
+
 #### Profile Detection
 Detect and show the current system environment profile:
 
 ```bash
 autorig detect
 autorig detect --verbose  # Show detailed environment information
+autorig detect --detailed  # Show comprehensive environment details with recommendations
 ```
 
 ## ⚙️ Configuration (`rig.yaml`)
@@ -236,6 +281,23 @@ dotfiles:
     target: "~/.gitconfig"
   - source: "tmux/tmux.conf"
     target: "~/.tmux.conf"
+
+# Pre/post hooks for different operations
+hooks:
+  pre_system:
+    - command: "echo 'Starting system package installation'"
+      description: "Log system installation start"
+  post_system:
+    - command: "sudo apt autoremove -y"
+      description: "Clean up after package installation"
+      when: "post"
+  pre_dotfiles:
+    - command: "mkdir -p ~/.backup"
+      description: "Create backup directory"
+  post_dotfiles:
+    - command: "chmod 600 ~/.ssh/*"  # Secure SSH files after linking
+      description: "Secure SSH files"
+      when: "post"
 
 scripts:
   - command: "~/.fzf/install --all"
@@ -318,6 +380,47 @@ dotfiles:
     target: "~/.config/alacritty/alacritty.yml"
   - source: "terminal/kitty.conf"
     target: "~/.config/kitty/kitty.conf"
+
+# Pre/post hooks for different operations
+hooks:
+  # Execute before any system operations
+  pre_system:
+    - command: "echo 'Starting AutoRig system configuration on $(date)' > /tmp/autorig.log"
+      description: "Log start time"
+    - command: "free -h | grep '^Mem:' > /tmp/memory_usage.txt"
+      description: "Record available memory"
+  # Execute after system package installation
+  post_system:
+    - command: "sudo apt autoremove -y && sudo apt autoclean"
+      description: "Clean up package cache"
+    - command: "echo 'System packages installed at $(date)' >> /tmp/autorig.log"
+      description: "Log completion time"
+  # Execute before git operations
+  pre_git:
+    - command: "mkdir -p ~/Projects"
+      description: "Create projects directory"
+  # Execute after git operations
+  post_git:
+    - command: "chmod -R 700 ~/Projects/private"
+      description: "Secure private projects"
+  # Execute before dotfiles linking
+  pre_dotfiles:
+    - command: "mkdir -p ~/.config ~/.ssh ~/Documents"
+      description: "Create necessary directories"
+  # Execute after dotfiles linking
+  post_dotfiles:
+    - command: "chmod 600 ~/.ssh/*"
+      description: "Secure SSH files"
+    - command: "chmod 700 ~/.ssh"
+      description: "Secure SSH directory"
+  # Execute before running custom scripts
+  pre_scripts:
+    - command: "source ~/.zshrc || true"
+      description: "Load shell environment"
+  # Execute after running custom scripts
+  post_scripts:
+    - command: "echo 'Configuration applied successfully at $(date)' >> /tmp/autorig.log"
+      description: "Log successful completion"
 
 scripts:
   # Install Oh My Zsh

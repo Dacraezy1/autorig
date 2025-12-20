@@ -48,8 +48,10 @@ def apply(
     - Execute custom post-install scripts
     """
     try:
+        from .remote import resolve_config_path
+        local_config_path = resolve_config_path(config)
         rig = AutoRig(
-            config, dry_run=dry_run, verbose=verbose, force=force, profile=profile
+            local_config_path, dry_run=dry_run, verbose=verbose, force=force, profile=profile
         )
         rig.apply()
     except Exception as e:
@@ -76,7 +78,9 @@ def clean(
     Remove symlinks created by the configuration.
     """
     try:
-        rig = AutoRig(config, dry_run=dry_run, verbose=verbose, profile=profile)
+        from .remote import resolve_config_path
+        local_config_path = resolve_config_path(config)
+        rig = AutoRig(local_config_path, dry_run=dry_run, verbose=verbose, profile=profile)
         rig.clean()
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
@@ -99,7 +103,9 @@ def validate(
     Validate a rig configuration file.
     """
     try:
-        AutoRig(config, verbose=verbose, profile=profile)
+        from .remote import resolve_config_path
+        local_config_path = resolve_config_path(config)
+        AutoRig(local_config_path, verbose=verbose, profile=profile)
         console.print(
             f"[bold green]Configuration file '{config}' is valid.[/bold green]"
         )
@@ -125,7 +131,9 @@ def backup(
     Create a full backup archive of all dotfiles defined in the config.
     """
     try:
-        rig = AutoRig(config, verbose=verbose, profile=profile)
+        from .remote import resolve_config_path
+        local_config_path = resolve_config_path(config)
+        rig = AutoRig(local_config_path, verbose=verbose, profile=profile)
         rig.backup()
     except Exception as e:
         console.print(f"[bold red]Error creating backup:[/bold red] {e}")
@@ -149,7 +157,9 @@ def restore(
     Restore dotfiles from a backup snapshot.
     """
     try:
-        rig = AutoRig(config, verbose=verbose, profile=profile)
+        from .remote import resolve_config_path
+        local_config_path = resolve_config_path(config)
+        rig = AutoRig(local_config_path, verbose=verbose, profile=profile)
         rig.restore(snapshot)
     except Exception as e:
         console.print(f"[bold red]Error restoring backup:[/bold red] {e}")
@@ -172,7 +182,9 @@ def status(
     Show the status of dotfiles and repositories.
     """
     try:
-        rig = AutoRig(config, verbose=verbose, profile=profile)
+        from .remote import resolve_config_path
+        local_config_path = resolve_config_path(config)
+        rig = AutoRig(local_config_path, verbose=verbose, profile=profile)
         rig.status()
     except Exception as e:
         console.print(f"[bold red]Error checking status:[/bold red] {e}")
@@ -196,7 +208,9 @@ def diff(
     Show differences between current system state and configuration.
     """
     try:
-        rig = AutoRig(config, verbose=verbose, profile=profile)
+        from .remote import resolve_config_path
+        local_config_path = resolve_config_path(config)
+        rig = AutoRig(local_config_path, verbose=verbose, profile=profile)
         rig.diff()
     except Exception as e:
         console.print(f"[bold red]Error checking diff:[/bold red] {e}")
@@ -220,7 +234,9 @@ def rollback(
     Rollback to the most recent backup snapshot.
     """
     try:
-        rig = AutoRig(config, verbose=verbose, profile=profile)
+        from .remote import resolve_config_path
+        local_config_path = resolve_config_path(config)
+        rig = AutoRig(local_config_path, verbose=verbose, profile=profile)
         rig.rollback()
     except Exception as e:
         console.print(f"[bold red]Error rolling back:[/bold red] {e}")
@@ -244,7 +260,9 @@ def watch(
     Monitor the config file and automatically apply changes when saved.
     """
     try:
-        rig = AutoRig(config, verbose=verbose, profile=profile)
+        from .remote import resolve_config_path
+        local_config_path = resolve_config_path(config)
+        rig = AutoRig(local_config_path, verbose=verbose, profile=profile)
         rig.watch()
     except Exception as e:
         console.print(f"[bold red]Error watching config:[/bold red] {e}")
@@ -294,7 +312,9 @@ def sync(
     Push local changes in git repositories to remotes.
     """
     try:
-        rig = AutoRig(config, dry_run=dry_run, verbose=verbose, profile=profile)
+        from .remote import resolve_config_path
+        local_config_path = resolve_config_path(config)
+        rig = AutoRig(local_config_path, dry_run=dry_run, verbose=verbose, profile=profile)
         rig.sync_repos()
     except Exception as e:
         console.print(f"[bold red]Error syncing repos:[/bold red] {e}")
@@ -322,7 +342,9 @@ def run_plugins(
     Run specific plugins defined in the configuration.
     """
     try:
-        rig = AutoRig(config, dry_run=dry_run, verbose=verbose, profile=profile)
+        from .remote import resolve_config_path
+        local_config_path = resolve_config_path(config)
+        rig = AutoRig(local_config_path, dry_run=dry_run, verbose=verbose, profile=profile)
         rig.run_plugins(plugins)
     except Exception as e:
         console.print(f"[bold red]Error running plugins:[/bold red] {e}")
@@ -334,7 +356,8 @@ def run_plugins(
     short_help="Show environment profile",
 )
 def detect(
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output")
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
+    detailed: bool = typer.Option(False, "--detailed", "-d", help="Show detailed environment information")
 ):
     """
     Detect and show the current system environment profile.
@@ -346,13 +369,172 @@ def detect(
         profile_name = detector.get_profile_name()
         console.print(f"[bold green]Detected profile:[/bold green] {profile_name}")
 
-        if verbose:
+        if verbose or detailed:
             console.print("\n[bold]Environment details:[/bold]")
             for key, value in detector.env_info.items():
                 console.print(f"  [cyan]{key}:[/cyan] {value}")
 
+        if detailed:
+            console.print("\n[bold]Recommendations based on environment:[/bold]")
+            # Provide recommendations based on detected environment
+            if detector.env_info.get("is_wsl", False):
+                console.print("  [yellow]WSL detected:[/yellow] Consider installing Windows-specific tools via WSL interop")
+            if detector.env_info.get("is_docker", False):
+                console.print("  [yellow]Docker container detected:[/yellow] Some system operations may be limited")
+            if detector.env_info.get("is_vm", False):
+                console.print("  [yellow]Virtual machine detected:[/yellow] Graphics acceleration may be limited")
+            if detector.env_info.get("is_ci", False):
+                console.print("  [yellow]CI/CD environment detected:[/yellow] Non-interactive mode recommended")
+            if detector.env_info.get("memory_gb", 0) < 4:
+                console.print("  [yellow]Low memory detected:[/yellow] Consider lighter-weight packages")
+            if detector.env_info.get("cpu_cores", 0) < 2:
+                console.print("  [yellow]Limited CPU cores:[/yellow] Some parallel operations may be slow")
+
     except Exception as e:
         console.print(f"[bold red]Error detecting environment:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
+@app.command(
+    help="Generate a status report for the current configuration.",
+    short_help="Generate status report",
+)
+def report(
+    config: str = typer.Argument(..., help="Path to rig.yaml config file"),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose output"
+    ),
+    profile: str = typer.Option(
+        None, "--profile", "-p", help="Use a specific profile configuration"
+    ),
+    output: str = typer.Option(
+        None, "--output", "-o", help="Output file for the report (JSON format)"
+    ),
+):
+    """
+    Generate a status report for the current configuration.
+    """
+    try:
+        from .core import AutoRig
+        from .monitoring import StatusReporter
+        from .remote import resolve_config_path
+
+        # Resolve remote config path if needed
+        local_config_path = resolve_config_path(config)
+
+        # Create a rig instance to access the config
+        rig = AutoRig(local_config_path, verbose=verbose, profile=profile)
+
+        # Create and show the status report
+        reporter = StatusReporter(rig.config, console)
+        reporter.report_status(show_resources=not verbose, show_config=True)
+
+        # Save to file if requested
+        if output:
+            reporter.save_report(output)
+
+    except Exception as e:
+        console.print(f"[bold red]Error generating report:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
+@app.command(
+    help="Download and work with remote configurations (GitHub, GitLab, HTTP).",
+    short_help="Work with remote configs",
+)
+def remote(
+    url: str = typer.Argument(..., help="URL to remote configuration file"),
+    command: str = typer.Argument("apply", help="Command to execute (apply, validate, status, etc.)"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", "-n", help="Simulate actions without making changes"
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose output"
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Force operations that might overwrite existing files",
+    ),
+    profile: str = typer.Option(
+        None, "--profile", "-p", help="Use a specific profile configuration"
+    ),
+):
+    """
+    Download and work with remote configurations (GitHub, GitLab, HTTP).
+    """
+    try:
+        from .remote import RemoteConfigManager
+        import tempfile
+        import os
+
+        console.print(f"[blue]Fetching remote configuration:[/blue] {url}")
+
+        # Handle special GitHub/GitLab shortcuts
+        if url.startswith("github:"):
+            # Format: github:owner/repo/path/to/config.yaml[@ref]
+            parts = url[7:].split('/')  # Remove 'github:' prefix
+            if len(parts) >= 3:
+                owner = parts[0]
+                repo = parts[1]
+                path_parts = parts[2:]
+
+                # Check if there's a @ref at the end
+                path = '/'.join(path_parts)
+                ref = "main"  # default
+                if '@' in path:
+                    path, ref = path.rsplit('@', 1)
+
+                local_path = RemoteConfigManager.fetch_from_github(owner, repo, path, ref)
+            else:
+                raise ValueError("Invalid GitHub URL format. Use: github:owner/repo/path/to/file[@ref]")
+        elif url.startswith("gitlab:"):
+            # Format: gitlab:owner/repo/path/to/config.yaml[@ref]
+            parts = url[7:].split('/')  # Remove 'gitlab:' prefix
+            if len(parts) >= 3:
+                owner = parts[0]
+                repo = parts[1]
+                path_parts = parts[2:]
+
+                # Check if there's a @ref at the end
+                path = '/'.join(path_parts)
+                ref = "main"  # default
+                if '@' in path:
+                    path, ref = path.rsplit('@', 1)
+
+                local_path = RemoteConfigManager.fetch_from_gitlab(owner, repo, path, ref)
+        else:
+            local_path = RemoteConfigManager.fetch_remote_config(url)
+
+        # Execute the requested command
+        from .core import AutoRig
+
+        if command == "apply":
+            rig = AutoRig(str(local_path), dry_run=dry_run, verbose=verbose, force=force, profile=profile)
+            rig.apply()
+        elif command == "validate":
+            AutoRig(str(local_path), verbose=verbose, profile=profile)
+            console.print(f"[bold green]Configuration file '{url}' is valid.[/bold green]")
+        elif command == "status":
+            rig = AutoRig(str(local_path), verbose=verbose, profile=profile)
+            rig.status()
+        elif command == "diff":
+            rig = AutoRig(str(local_path), verbose=verbose, profile=profile)
+            rig.diff()
+        else:
+            console.print(f"[red]Unsupported command: {command}[/red]")
+            raise typer.Exit(code=1)
+
+        # Clean up temporary file after successful operation
+        try:
+            os.remove(local_path)
+            console.print(f"[green]Cleaned up temporary configuration file[/green]")
+        except:
+            pass  # Don't fail if cleanup fails
+
+    except Exception as e:
+        console.print(f"[bold red]Error with remote config:[/bold red] {e}")
         raise typer.Exit(code=1)
 
 
