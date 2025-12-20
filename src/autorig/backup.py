@@ -3,7 +3,7 @@ import os
 import json
 from pathlib import Path
 from datetime import datetime
-from typing import Any
+from typing import Dict, Any
 from rich.console import Console
 from .config import RigConfig
 import sys
@@ -30,7 +30,7 @@ class BackupManager:
         console.print(f"[bold]Creating backup snapshot:[/bold] {filepath}")
 
         # Create a manifest of what's being backed up
-        manifest = {
+        manifest: Dict[str, Any] = {
             "config_name": self.config.name,
             "timestamp": timestamp,
             "backup_type": "full",

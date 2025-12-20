@@ -48,11 +48,12 @@ class AutoRig:
         self.verbose = verbose
         self.force = force
         self.backup_manager = BackupManager(self.config)
-        self.renderer = None
         self.logger = setup_logging(verbose=verbose)
         self.notification_manager = NotificationManager()
         self.progress_tracker = ProgressTracker(self.notification_manager)
         self.state_manager = StateManager(self.config)
+        config_dir = Path(self.config_path).parent.absolute()
+        self.renderer = TemplateRenderer(config_dir)
 
     def apply(self):
         mode = "[DRY RUN] " if self.dry_run else ""
@@ -309,7 +310,14 @@ class AutoRig:
 
                 try:
                     result = subprocess.run(
-                        ["git", "clone", "-b", repo.branch, repo.url, str(target_path)],
+                        [
+                            "git",
+                            "clone",
+                            "-b",
+                            repo.branch or "main",
+                            repo.url,
+                            str(target_path),
+                        ],
                         check=True,
                         capture_output=True,
                         text=True,
@@ -340,7 +348,6 @@ class AutoRig:
         console.print(f"[bold]Linking {len(dotfiles)} dotfiles...[/bold]")
         self.logger.info(f"Linking {len(dotfiles)} dotfiles")
         config_dir = Path(self.config_path).parent.absolute()
-        self.renderer = TemplateRenderer(config_dir)
 
         for i, df in enumerate(dotfiles, 1):
             try:
@@ -678,7 +685,14 @@ class AutoRig:
 
                 try:
                     result = subprocess.run(
-                        ["git", "clone", "-b", repo.branch, repo.url, str(target_path)],
+                        [
+                            "git",
+                            "clone",
+                            "-b",
+                            repo.branch or "main",
+                            repo.url,
+                            str(target_path),
+                        ],
                         check=True,
                         capture_output=True,
                         text=True,
@@ -720,7 +734,6 @@ class AutoRig:
         console.print(f"[bold]Linking {len(dotfiles)} dotfiles...[/bold]")
         self.logger.info(f"Linking {len(dotfiles)} dotfiles")
         config_dir = Path(self.config_path).parent.absolute()
-        self.renderer = TemplateRenderer(config_dir)
 
         for i, df in enumerate(dotfiles, 1):
             try:
@@ -850,10 +863,9 @@ class AutoRig:
                         console.print(f"[green]Rendered {target} from {source}[/green]")
                         self.logger.info(f"Rendered template {source} to {target}")
                         tracker.record_change(
-                            "created_rendered_file",
+                            "rendered_from_template",
                             str(target),
                             source=str(source),
-                            action="rendered_from_template",
                         )
                         self.progress_tracker.update_progress(f"Rendered: {df.target}")
                     except Exception as e:
@@ -878,7 +890,6 @@ class AutoRig:
                         "created_symlink",
                         str(target),
                         source=str(source),
-                        action="created_symlink",
                     )
                     self.progress_tracker.update_progress(f"Linked: {df.target}")
                 except Exception as e:
@@ -1174,7 +1185,6 @@ class AutoRig:
     def diff(self):
         console.print(f"[bold]Configuration Diff: {self.config.name}[/bold]")
         config_dir = Path(self.config_path).parent.absolute()
-        self.renderer = TemplateRenderer(config_dir)
 
         for df in self.config.dotfiles:
             target = Path(os.path.expanduser(df.target))

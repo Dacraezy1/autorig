@@ -2,10 +2,10 @@
 Monitoring and status reporting for AutoRig operations.
 """
 
-import psutil
+import psutil  # type: ignore[import-untyped]
 import time
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 from rich.console import Console
 from rich.table import Table
@@ -173,7 +173,7 @@ class StatusReporter:
 
         return report
 
-    def save_report(self, output_path: str = None):
+    def save_report(self, output_path: Optional[str] = None):
         """Save the status report to a file."""
         import json
 

@@ -49,14 +49,15 @@ class NotificationManager:
                 return False
         elif self.system == "windows":
             try:
-                import importlib.util  # type: ignore[import-untyped]
+                import importlib.util
 
                 # Check if win10toast is available
-                if importlib.util.find_spec("win10toast") is not None:
+                win10toast_spec = importlib.util.find_spec("win10toast")
+                if win10toast_spec is not None:
                     return True
                 else:
                     return False
-            except ImportError:
+            except (ImportError, AttributeError):
                 return False
         else:
             return False
@@ -132,7 +133,10 @@ class NotificationManager:
         Send notification on Windows using win10toast.
         """
         try:
-            from win10toast import ToastNotifier
+            import importlib
+
+            win10toast_module = importlib.import_module("win10toast")
+            ToastNotifier = getattr(win10toast_module, "ToastNotifier")
 
             toaster = ToastNotifier()
             toaster.show_toast(
@@ -142,7 +146,7 @@ class NotificationManager:
                 icon_path=icon if icon else None,
                 threaded=True,
             )
-        except ImportError:
+        except (ImportError, AttributeError):
             pass  # Notification library not available
         except Exception:
             pass  # Other error in notification

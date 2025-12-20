@@ -6,7 +6,7 @@ from .profiles import load_profile_config
 
 try:
     from .schema import get_config_schema
-    import jsonschema
+    import jsonschema  # type: ignore[import-untyped]
 
     SCHEMA_AVAILABLE = True
 except ImportError:

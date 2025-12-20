@@ -140,7 +140,7 @@ class OperationTracker:
     def __init__(self, state_manager: StateManager, operation_name: str):
         self.state_manager = state_manager
         self.operation_name = operation_name
-        self.changes = []
+        self.changes: List[Dict[str, Any]] = []
 
     def record_change(self, action: str, path: str, **details):
         """Record a change made during an operation."""
