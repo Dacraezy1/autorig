@@ -3,9 +3,11 @@ import os
 import re
 from pydantic import BaseModel, field_validator, model_validator
 from .profiles import load_profile_config
+
 try:
     from .schema import get_config_schema
     import jsonschema
+
     SCHEMA_AVAILABLE = True
 except ImportError:
     SCHEMA_AVAILABLE = False
@@ -77,12 +79,25 @@ class Dotfile(BaseModel):
 
         # Additional validation for dangerous paths
         dangerous_paths = [
-            "/etc", "/root", "/boot", "/sys", "/proc", "/dev",
-            "/var/log", "/usr/bin", "/usr/sbin", "/bin", "/sbin"
+            "/etc",
+            "/root",
+            "/boot",
+            "/sys",
+            "/proc",
+            "/dev",
+            "/var/log",
+            "/usr/bin",
+            "/usr/sbin",
+            "/bin",
+            "/sbin",
         ]
         expanded_path = os.path.expanduser(v)
         for path in dangerous_paths:
-            if expanded_path.startswith(path) and expanded_path != path and expanded_path != path + "/":
+            if (
+                expanded_path.startswith(path)
+                and expanded_path != path
+                and expanded_path != path + "/"
+            ):
                 raise ValueError(f"Access to restricted system path detected: {v}")
 
         return v

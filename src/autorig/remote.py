@@ -17,49 +17,51 @@ class RemoteConfigManager:
     """
     Manages fetching configurations from remote sources (GitHub, GitLab, HTTP, etc.)
     """
-    
+
     @staticmethod
     def is_remote_url(config_path: str) -> bool:
         """Check if the config path is a remote URL."""
         parsed = urlparse(config_path)
-        return parsed.scheme in ['http', 'https']
-    
+        return parsed.scheme in ["http", "https"]
+
     @staticmethod
     def fetch_remote_config(remote_url: str) -> Path:
         """Fetch a configuration file from a remote URL."""
         try:
             console.print(f"[blue]Fetching remote configuration:[/blue] {remote_url}")
-            
+
             response = requests.get(remote_url)
             response.raise_for_status()
-            
+
             # Create a temporary file to store the remote config
             parsed_url = urlparse(remote_url)
             filename = os.path.basename(parsed_url.path) or "remote_config.yaml"
-            
+
             # Create temporary file
             temp_dir = Path(tempfile.mkdtemp(prefix="autorig_"))
             temp_config_path = temp_dir / filename
-            
-            with open(temp_config_path, 'wb') as f:
+
+            with open(temp_config_path, "wb") as f:
                 f.write(response.content)
-            
-            console.print(f"[green]Downloaded remote configuration to:[/green] {temp_config_path}")
+
+            console.print(
+                f"[green]Downloaded remote configuration to:[/green] {temp_config_path}"
+            )
             return temp_config_path
-            
+
         except requests.exceptions.RequestException as e:
             console.print(f"[red]Error downloading remote configuration: {e}[/red]")
             raise
         except Exception as e:
             console.print(f"[red]Error processing remote configuration: {e}[/red]")
             raise
-    
+
     @staticmethod
     def fetch_from_github(owner: str, repo: str, path: str, ref: str = "main") -> Path:
         """Fetch a file from GitHub repository."""
         url = f"https://raw.githubusercontent.com/{owner}/{repo}/{ref}/{path}"
         return RemoteConfigManager.fetch_remote_config(url)
-    
+
     @staticmethod
     def fetch_from_gitlab(owner: str, repo: str, path: str, ref: str = "main") -> Path:
         """Fetch a file from GitLab repository."""

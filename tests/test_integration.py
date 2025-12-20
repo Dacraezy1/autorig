@@ -1,6 +1,7 @@
 """
 Additional tests for AutoRig CLI and integration testing
 """
+
 import pytest
 import tempfile
 import os
@@ -18,53 +19,49 @@ def test_full_integration():
     # Create a temporary config file with all new features
     config_data = {
         "name": "Test Integration Config",
-        "variables": {
-            "test_var": "test_value"
-        },
-        "system": {
-            "packages": ["git"]  # Use a package that's likely installed
-        },
-        "git": {
-            "repositories": []
-        },
+        "variables": {"test_var": "test_value"},
+        "system": {"packages": ["git"]},  # Use a package that's likely installed
+        "git": {"repositories": []},
         "dotfiles": [],
         "scripts": [],
         "hooks": {
             "pre_system": [
                 {
                     "command": "echo 'pre-system test'",
-                    "description": "Pre-system hook test"
+                    "description": "Pre-system hook test",
                 }
             ],
             "post_system": [
                 {
                     "command": "echo 'post-system test'",
-                    "description": "Post-system hook test"
+                    "description": "Post-system hook test",
                 }
-            ]
-        }
+            ],
+        },
     }
-    
+
     with tempfile.TemporaryDirectory() as temp_dir:
         config_path = Path(temp_dir) / "test_config.yaml"
-        
-        with open(config_path, 'w') as f:
+
+        with open(config_path, "w") as f:
             yaml.dump(config_data, f)
-        
+
         # Test that we can create a RigConfig from this file
         config = RigConfig.from_yaml(str(config_path))
         assert config.name == "Test Integration Config"
         assert len(config.hooks.pre_system) == 1
         assert len(config.hooks.post_system) == 1
         assert config.hooks.pre_system[0].command == "echo 'pre-system test'"
-        
+
         # Test that we can create an AutoRig instance
-        rig = AutoRig(str(config_path), dry_run=True)  # Use dry-run to avoid actual changes
+        rig = AutoRig(
+            str(config_path), dry_run=True
+        )  # Use dry-run to avoid actual changes
         assert rig.config.name == "Test Integration Config"
 
 
-@patch('autorig.profiles.EnvironmentDetector._collect_environment_info')
-@patch('subprocess.run')
+@patch("autorig.profiles.EnvironmentDetector._collect_environment_info")
+@patch("subprocess.run")
 def test_autorig_with_new_features(mock_subprocess, mock_env_info):
     """Test AutoRig with mocked subprocess for new features."""
     # Mock environment info to avoid platform issues
@@ -114,13 +111,11 @@ def test_autorig_with_new_features(mock_subprocess, mock_env_info):
         "dotfiles": [],
         "scripts": [],
         "hooks": {
-            "pre_system": [
-                {"command": "echo 'test'", "description": "test hook"}
-            ]
-        }
+            "pre_system": [{"command": "echo 'test'", "description": "test hook"}]
+        },
     }
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         yaml.dump(config_data, f)
         f.flush()
 
@@ -159,20 +154,20 @@ def test_schema_validation_integration():
             "pre_dotfiles": [],
             "post_dotfiles": [],
             "pre_scripts": [],
-            "post_scripts": []
-        }
+            "post_scripts": [],
+        },
     }
-    
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         yaml.dump(config_data, f)
         f.flush()
-        
+
         try:
             # This should work without schema validation errors
             config = RigConfig.from_yaml(f.name)
             assert config.name == "Schema Test Config"
             # Verify hooks are properly loaded
-            assert hasattr(config, 'hooks')
+            assert hasattr(config, "hooks")
         finally:
             os.unlink(f.name)
 
@@ -181,17 +176,13 @@ def test_config_validation_with_new_fields():
     """Test that new fields are properly included in validation."""
     config_data = {
         "name": "Validation Test",
-        "hooks": {
-            "pre_system": [
-                {"command": "test", "description": "test"}
-            ]
-        }
+        "hooks": {"pre_system": [{"command": "test", "description": "test"}]},
     }
-    
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         yaml.dump(config_data, f)
         f.flush()
-        
+
         try:
             # Should validate successfully with new hooks field
             config = RigConfig.from_yaml(f.name)
@@ -201,35 +192,33 @@ def test_config_validation_with_new_fields():
             os.unlink(f.name)
 
 
-@patch('autorig.installers.base.get_system_installer')
+@patch("autorig.installers.base.get_system_installer")
 def test_autorig_with_notifications_and_tracking(mock_installer):
     """Test AutoRig with new notification and tracking features."""
     # Mock the installer to return a mock installer that doesn't do anything
     mock_inst = Mock()
     mock_inst.install.return_value = True
     mock_installer.return_value = mock_inst
-    
+
     config_data = {
         "name": "Test Notifications",
         "system": {"packages": ["git"]},
         "git": {"repositories": []},
         "dotfiles": [],
         "scripts": [],
-        "hooks": {
-            "pre_system": [{"command": "echo 'test'", "description": "test"}]
-        }
+        "hooks": {"pre_system": [{"command": "echo 'test'", "description": "test"}]},
     }
-    
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         yaml.dump(config_data, f)
         f.flush()
-        
+
         try:
             # Test with dry run to prevent actual changes
             rig = AutoRig(f.name, dry_run=True, verbose=True)
-            assert hasattr(rig, 'notification_manager')
-            assert hasattr(rig, 'progress_tracker')
-            assert hasattr(rig, 'state_manager')
+            assert hasattr(rig, "notification_manager")
+            assert hasattr(rig, "progress_tracker")
+            assert hasattr(rig, "state_manager")
         finally:
             os.unlink(f.name)
 
@@ -238,26 +227,20 @@ def test_secure_command_validation():
     """Test the enhanced security validation."""
     # Test that dangerous commands are blocked
     from autorig.core import AutoRig
-    
+
     config_data = {
         "name": "Security Test",
         "system": {"packages": []},
         "git": {"repositories": []},
         "dotfiles": [],
-        "scripts": [
-            {"command": "echo safe command", "description": "safe"}
-        ],
-        "hooks": {
-            "pre_system": [
-                {"command": "echo safe hook", "description": "safe"}
-            ]
-        }
+        "scripts": [{"command": "echo safe command", "description": "safe"}],
+        "hooks": {"pre_system": [{"command": "echo safe hook", "description": "safe"}]},
     }
-    
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         yaml.dump(config_data, f)
         f.flush()
-        
+
         try:
             rig = AutoRig(f.name)
             # Test the validation function directly

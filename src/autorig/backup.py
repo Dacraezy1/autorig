@@ -34,7 +34,7 @@ class BackupManager:
             "config_name": self.config.name,
             "timestamp": timestamp,
             "backup_type": "full",
-            "dotfiles": []
+            "dotfiles": [],
         }
 
         count = 0
@@ -53,19 +53,26 @@ class BackupManager:
                     tar.add(target, arcname=arcname)
 
                     # Add to manifest
-                    manifest["dotfiles"].append({
-                        "source": df.source,
-                        "target": df.target,
-                        "exists": True,
-                        "is_symlink": target.is_symlink(),
-                        "original_path": str(target.resolve()) if target.is_symlink() else str(target)
-                    })
+                    manifest["dotfiles"].append(
+                        {
+                            "source": df.source,
+                            "target": df.target,
+                            "exists": True,
+                            "is_symlink": target.is_symlink(),
+                            "original_path": (
+                                str(target.resolve())
+                                if target.is_symlink()
+                                else str(target)
+                            ),
+                        }
+                    )
                     count += 1
 
             # Add manifest to the archive using in-memory data
             import io
-            manifest_data = json.dumps(manifest, indent=2).encode('utf-8')
-            manifest_info = tarfile.TarInfo('manifest.json')
+
+            manifest_data = json.dumps(manifest, indent=2).encode("utf-8")
+            manifest_info = tarfile.TarInfo("manifest.json")
             manifest_info.size = len(manifest_data)
             tar.addfile(manifest_info, io.BytesIO(manifest_data))
 
@@ -93,26 +100,32 @@ class BackupManager:
         # Use a safer extraction method
         with tarfile.open(path, "r:gz") as tar:
             # Extract manifest first to get information about what was backed up
-            manifest_member = tar.getmember('manifest.json')
+            manifest_member = tar.getmember("manifest.json")
             if manifest_member:
                 manifest_file = tar.extractfile(manifest_member)
                 if manifest_file:
-                    manifest_content = manifest_file.read().decode('utf-8')
+                    manifest_content = manifest_file.read().decode("utf-8")
                     manifest = json.loads(manifest_content)
 
                     # Extract files with safety checks
                     for member in tar.getmembers():
                         # Skip the manifest file itself
-                        if member.name == 'manifest.json':
+                        if member.name == "manifest.json":
                             continue
 
                         # Security check for each member
                         if ".." in member.name or member.name.startswith("/"):
-                            console.print(f"[red]Skipping dangerous file in archive: {member.name}[/red]")
+                            console.print(
+                                f"[red]Skipping dangerous file in archive: {member.name}[/red]"
+                            )
                             continue
 
                         # Extract with safety
-                        tar.extract(member, path="/", filter="data" if sys.version_info >= (3, 12) else None)
+                        tar.extract(
+                            member,
+                            path="/",
+                            filter="data" if sys.version_info >= (3, 12) else None,
+                        )
 
         console.print(f"[green]Restored files from {path}[/green]")
 
@@ -138,18 +151,28 @@ class BackupManager:
 
                     # Security validation
                     if ".." in archive_name or archive_name.startswith("/"):
-                        console.print(f"[red]Skipping dangerous path: {archive_name}[/red]")
+                        console.print(
+                            f"[red]Skipping dangerous path: {archive_name}[/red]"
+                        )
                         continue
 
                     try:
                         member = tar.getmember(archive_name)
                         # Extract to a safe location first
-                        tar.extract(member, path="/", filter="data" if sys.version_info >= (3, 12) else None)
+                        tar.extract(
+                            member,
+                            path="/",
+                            filter="data" if sys.version_info >= (3, 12) else None,
+                        )
                         console.print(f"[green]Restored: {target_path}[/green]")
                     except KeyError:
-                        console.print(f"[yellow]File not found in archive: {archive_name}[/yellow]")
+                        console.print(
+                            f"[yellow]File not found in archive: {archive_name}[/yellow]"
+                        )
                     except Exception as e:
-                        console.print(f"[red]Failed to restore {target_path}: {e}[/red]")
+                        console.print(
+                            f"[red]Failed to restore {target_path}: {e}[/red]"
+                        )
 
             console.print(f"[green]Restored files based on manifest[/green]")
         except tarfile.ReadError:

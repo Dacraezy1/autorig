@@ -4,6 +4,7 @@ JSON Schema for AutoRig configuration validation.
 
 from typing import Dict, Any
 
+
 def get_config_schema() -> Dict[str, Any]:
     """
     Returns the JSON schema for AutoRig configuration files.
@@ -17,13 +18,13 @@ def get_config_schema() -> Dict[str, Any]:
                 "type": "string",
                 "description": "Name of the configuration",
                 "minLength": 1,
-                "maxLength": 200
+                "maxLength": 200,
             },
             "variables": {
                 "type": "object",
                 "description": "Variables available for template rendering",
                 "additionalProperties": True,
-                "default": {}
+                "default": {},
             },
             "system": {
                 "type": "object",
@@ -31,15 +32,12 @@ def get_config_schema() -> Dict[str, Any]:
                 "properties": {
                     "packages": {
                         "type": "array",
-                        "items": {
-                            "type": "string",
-                            "minLength": 1
-                        },
-                        "default": []
+                        "items": {"type": "string", "minLength": 1},
+                        "default": [],
                     }
                 },
                 "additionalProperties": False,
-                "default": {}
+                "default": {},
             },
             "git": {
                 "type": "object",
@@ -54,24 +52,21 @@ def get_config_schema() -> Dict[str, Any]:
                                 "url": {
                                     "type": "string",
                                     "format": "uri",
-                                    "description": "Git repository URL"
+                                    "description": "Git repository URL",
                                 },
                                 "path": {
                                     "type": "string",
-                                    "description": "Local path to clone repository"
+                                    "description": "Local path to clone repository",
                                 },
-                                "branch": {
-                                    "type": "string",
-                                    "default": "main"
-                                }
+                                "branch": {"type": "string", "default": "main"},
                             },
-                            "additionalProperties": False
+                            "additionalProperties": False,
                         },
-                        "default": []
+                        "default": [],
                     }
                 },
                 "additionalProperties": False,
-                "default": {}
+                "default": {},
             },
             "dotfiles": {
                 "type": "array",
@@ -82,16 +77,16 @@ def get_config_schema() -> Dict[str, Any]:
                     "properties": {
                         "source": {
                             "type": "string",
-                            "description": "Source file path (relative to config)"
+                            "description": "Source file path (relative to config)",
                         },
                         "target": {
                             "type": "string",
-                            "description": "Target file path (absolute on system)"
-                        }
+                            "description": "Target file path (absolute on system)",
+                        },
                     },
-                    "additionalProperties": False
+                    "additionalProperties": False,
                 },
-                "default": []
+                "default": [],
             },
             "scripts": {
                 "type": "array",
@@ -102,26 +97,26 @@ def get_config_schema() -> Dict[str, Any]:
                     "properties": {
                         "command": {
                             "type": "string",
-                            "description": "Shell command to execute"
+                            "description": "Shell command to execute",
                         },
                         "description": {
                             "type": "string",
-                            "description": "Description of the script"
+                            "description": "Description of the script",
                         },
                         "cwd": {
                             "type": "string",
-                            "description": "Working directory for the script"
+                            "description": "Working directory for the script",
                         },
                         "when": {
                             "type": "string",
                             "enum": ["pre", "post", "both"],
                             "description": "When to run the script",
-                            "default": "post"
-                        }
+                            "default": "post",
+                        },
                     },
-                    "additionalProperties": False
+                    "additionalProperties": False,
                 },
-                "default": []
+                "default": [],
             },
             "hooks": {
                 "type": "object",
@@ -134,10 +129,10 @@ def get_config_schema() -> Dict[str, Any]:
                     "pre_dotfiles": {"$ref": "#/definitions/scripts"},
                     "post_dotfiles": {"$ref": "#/definitions/scripts"},
                     "pre_scripts": {"$ref": "#/definitions/scripts"},
-                    "post_scripts": {"$ref": "#/definitions/scripts"}
+                    "post_scripts": {"$ref": "#/definitions/scripts"},
                 },
                 "additionalProperties": False,
-                "default": {}
+                "default": {},
             },
             "profiles": {
                 "type": "object",
@@ -149,15 +144,14 @@ def get_config_schema() -> Dict[str, Any]:
                         "git": {"$ref": "#/properties/git"},
                         "dotfiles": {"$ref": "#/properties/dotfiles"},
                         "scripts": {"$ref": "#/properties/scripts"},
-                        "hooks": {"$ref": "#/properties/hooks"}
+                        "hooks": {"$ref": "#/properties/hooks"},
                     },
-                    "additionalProperties": False
+                    "additionalProperties": False,
                 },
-                "default": {}
-            }
+                "default": {},
+            },
         },
         "additionalProperties": False,
-        
         "definitions": {
             "scripts": {
                 "type": "array",
@@ -167,25 +161,25 @@ def get_config_schema() -> Dict[str, Any]:
                     "properties": {
                         "command": {
                             "type": "string",
-                            "description": "Shell command to execute"
+                            "description": "Shell command to execute",
                         },
                         "description": {
                             "type": "string",
-                            "description": "Description of the script"
+                            "description": "Description of the script",
                         },
                         "cwd": {
                             "type": "string",
-                            "description": "Working directory for the script"
+                            "description": "Working directory for the script",
                         },
                         "when": {
                             "type": "string",
                             "enum": ["pre", "post", "both"],
                             "description": "When to run the script",
-                            "default": "post"
-                        }
+                            "default": "post",
+                        },
                     },
-                    "additionalProperties": False
-                }
+                    "additionalProperties": False,
+                },
             }
-        }
+        },
     }

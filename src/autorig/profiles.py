@@ -60,8 +60,10 @@ class EnvironmentDetector:
         try:
             # Check for common VM indicators in DMI
             import subprocess
-            result = subprocess.run(["systemd-detect-virt"],
-                                  capture_output=True, text=True, check=True)
+
+            result = subprocess.run(
+                ["systemd-detect-virt"], capture_output=True, text=True, check=True
+            )
             if result.stdout.strip() != "none":
                 return True
         except (subprocess.CalledProcessError, FileNotFoundError):
@@ -69,7 +71,14 @@ class EnvironmentDetector:
             try:
                 with open("/sys/class/dmi/id/product_name", "r") as f:
                     product_name = f.read().strip().lower()
-                    vm_indicators = ["vmware", "virtualbox", "qemu", "kvm", "parallels", "bochs"]
+                    vm_indicators = [
+                        "vmware",
+                        "virtualbox",
+                        "qemu",
+                        "kvm",
+                        "parallels",
+                        "bochs",
+                    ]
                     if any(indicator in product_name for indicator in vm_indicators):
                         return True
             except FileNotFoundError:
@@ -79,9 +88,15 @@ class EnvironmentDetector:
     def _is_ci(self) -> bool:
         """Check if running in a CI/CD environment."""
         ci_vars = [
-            "CI", "CONTINUOUS_INTEGRATION", "BUILD_NUMBER",
-            "GITHUB_ACTIONS", "TRAVIS", "CIRCLECI", "JENKINS_URL",
-            "GITLAB_CI", "TEAMCITY_VERSION"
+            "CI",
+            "CONTINUOUS_INTEGRATION",
+            "BUILD_NUMBER",
+            "GITHUB_ACTIONS",
+            "TRAVIS",
+            "CIRCLECI",
+            "JENKINS_URL",
+            "GITLAB_CI",
+            "TEAMCITY_VERSION",
         ]
         return any(os.environ.get(var) for var in ci_vars)
 
@@ -90,19 +105,34 @@ class EnvironmentDetector:
         try:
             if self.env_info["os"] == "linux":
                 # Try different package managers
-                for cmd in [["dpkg", "-l"], ["rpm", "-qa"], ["pacman", "-Q"], ["brew", "list"]]:
+                for cmd in [
+                    ["dpkg", "-l"],
+                    ["rpm", "-qa"],
+                    ["pacman", "-Q"],
+                    ["brew", "list"],
+                ]:
                     try:
-                        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-                        packages = result.stdout.split('\n')
+                        result = subprocess.run(
+                            cmd, capture_output=True, text=True, check=True
+                        )
+                        packages = result.stdout.split("\n")
                         # Filter and clean package names
-                        packages = [pkg.split()[0] if pkg.split() else "" for pkg in packages if pkg.startswith(('ii', 'rc')) or pkg.strip()]
+                        packages = [
+                            pkg.split()[0] if pkg.split() else ""
+                            for pkg in packages
+                            if pkg.startswith(("ii", "rc")) or pkg.strip()
+                        ]
                         return [pkg for pkg in packages if pkg]
                     except (subprocess.CalledProcessError, FileNotFoundError):
                         continue
             elif self.env_info["os"] == "darwin":
                 try:
-                    result = subprocess.run(["brew", "list"], capture_output=True, text=True, check=True)
-                    return [pkg.strip() for pkg in result.stdout.split('\n') if pkg.strip()]
+                    result = subprocess.run(
+                        ["brew", "list"], capture_output=True, text=True, check=True
+                    )
+                    return [
+                        pkg.strip() for pkg in result.stdout.split("\n") if pkg.strip()
+                    ]
                 except (subprocess.CalledProcessError, FileNotFoundError):
                     pass
         except Exception:
@@ -113,15 +143,25 @@ class EnvironmentDetector:
         """Get GPU information."""
         try:
             if self.env_info["os"] == "linux":
-                result = subprocess.run(["lspci"], capture_output=True, text=True, check=True)
-                for line in result.stdout.split('\n'):
-                    if 'vga' in line.lower() or '3d' in line.lower() or 'display' in line.lower():
-                        return line.strip().split(':')[-1].strip()
+                result = subprocess.run(
+                    ["lspci"], capture_output=True, text=True, check=True
+                )
+                for line in result.stdout.split("\n"):
+                    if (
+                        "vga" in line.lower()
+                        or "3d" in line.lower()
+                        or "display" in line.lower()
+                    ):
+                        return line.strip().split(":")[-1].strip()
             elif self.env_info["os"] == "darwin":
-                result = subprocess.run(["system_profiler", "SPDisplaysDataType"],
-                                      capture_output=True, text=True, check=True)
-                for line in result.stdout.split('\n'):
-                    if 'chip' in line.lower() or 'processor' in line.lower():
+                result = subprocess.run(
+                    ["system_profiler", "SPDisplaysDataType"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                for line in result.stdout.split("\n"):
+                    if "chip" in line.lower() or "processor" in line.lower():
                         return line.strip()
         except Exception:
             pass
@@ -139,8 +179,12 @@ class EnvironmentDetector:
                             kb = int(parts[1])
                             return round(kb / 1024 / 1024, 2)  # Convert to GB
             elif self.env_info["os"] == "darwin":
-                result = subprocess.run(["sysctl", "-n", "hw.memsize"],
-                                      capture_output=True, text=True, check=True)
+                result = subprocess.run(
+                    ["sysctl", "-n", "hw.memsize"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
                 bytes_size = int(result.stdout.strip())
                 return round(bytes_size / 1024 / 1024 / 1024, 2)  # Convert to GB
         except Exception:
@@ -151,6 +195,7 @@ class EnvironmentDetector:
         """Get number of CPU cores."""
         try:
             import multiprocessing
+
             return multiprocessing.cpu_count()
         except Exception:
             return 0
@@ -159,6 +204,7 @@ class EnvironmentDetector:
         """Get available disk space in GB."""
         try:
             import shutil
+
             total, used, free = shutil.disk_usage("/")
             return round(free / 1024 / 1024 / 1024, 2)  # Convert to GB
         except Exception:

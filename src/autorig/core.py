@@ -168,7 +168,9 @@ class AutoRig:
                 self.progress_tracker.fail_operation(str(e))
                 # Attempt rollback if not in dry-run mode
                 if not self.dry_run:
-                    console.print("[yellow]Attempting rollback due to error...[/yellow]")
+                    console.print(
+                        "[yellow]Attempting rollback due to error...[/yellow]"
+                    )
                     try:
                         tracker.rollback_operation()
                     except Exception as rollback_error:
@@ -205,7 +207,9 @@ class AutoRig:
                     )
                     self.logger.info(f"Successfully installed packages: {packages}")
                 else:
-                    console.print(f"[yellow]Partially successful: {success_count}/{len(packages)} packages installed.[/yellow]")
+                    console.print(
+                        f"[yellow]Partially successful: {success_count}/{len(packages)} packages installed.[/yellow]"
+                    )
                     self.logger.warning(
                         f"Only {success_count}/{len(packages)} packages installed: {packages}"
                     )
@@ -254,7 +258,9 @@ class AutoRig:
                             console.print(
                                 f"[yellow]DRY RUN: Would pull in {target_path}[/yellow]"
                             )
-                            self.progress_tracker.update_progress(f"Dry run: update {repo.url}")
+                            self.progress_tracker.update_progress(
+                                f"Dry run: update {repo.url}"
+                            )
                             continue
 
                         try:
@@ -268,7 +274,9 @@ class AutoRig:
                             if self.verbose and result.stdout:
                                 console.print(f"[dim]Git output: {result.stdout}[/dim]")
                             self.logger.info(f"Updated git repo: {repo.url}")
-                            self.progress_tracker.update_progress(f"Updated: {repo.url}")
+                            self.progress_tracker.update_progress(
+                                f"Updated: {repo.url}"
+                            )
                         except subprocess.CalledProcessError as e:
                             console.print(
                                 f"[red]Failed to update {repo.url}: {e}[/red]"
@@ -284,7 +292,9 @@ class AutoRig:
                         self.logger.warning(
                             f"Path exists but is not a git repository: {repo.path}"
                         )
-                        self.progress_tracker.update_progress(f"Non-git path: {repo.path}")
+                        self.progress_tracker.update_progress(
+                            f"Non-git path: {repo.path}"
+                        )
                     continue
 
                 console.print(f"Cloning {repo.url} to {repo.path}...")
@@ -355,7 +365,9 @@ class AutoRig:
                     self.logger.error(
                         f"Security error: Source path outside config directory: {source}"
                     )
-                    self.progress_tracker.update_progress(f"Security error: {df.target}")
+                    self.progress_tracker.update_progress(
+                        f"Security error: {df.target}"
+                    )
                     continue
 
                 if not source.exists():
@@ -419,7 +431,9 @@ class AutoRig:
                     except Exception as e:
                         console.print(f"[red]Failed to render {target}: {e}[/red]")
                         self.logger.error(f"Template render failed for {target}: {e}")
-                        self.progress_tracker.update_progress(f"Failed render: {df.target}")
+                        self.progress_tracker.update_progress(
+                            f"Failed render: {df.target}"
+                        )
                     continue
 
                 try:
@@ -494,7 +508,7 @@ class AutoRig:
                     console.print(f"[red]Error: {e.stderr}[/red]")
                 self.logger.error(f"Hook failed: {desc} - {e}")
 
-    def _install_system_packages_with_tracking(self, tracker: 'OperationTracker'):
+    def _install_system_packages_with_tracking(self, tracker: "OperationTracker"):
         packages = self.config.system.packages
         if packages:
             console.print(f"[bold]Installing {len(packages)} system packages...[/bold]")
@@ -517,7 +531,9 @@ class AutoRig:
                     if self.installer.install([pkg]):
                         success_count += 1
                         # Record successful installation for potential rollback
-                        tracker.record_change("installed_package", pkg, status="success")
+                        tracker.record_change(
+                            "installed_package", pkg, status="success"
+                        )
                         self.progress_tracker.update_progress(f"Installed: {pkg}")
                     else:
                         failures.append(pkg)
@@ -530,9 +546,13 @@ class AutoRig:
                     )
                     self.logger.info(f"Successfully installed packages: {packages}")
                 else:
-                    console.print(f"[yellow]Partially successful: {success_count}/{len(packages)} packages installed.[/yellow]")
+                    console.print(
+                        f"[yellow]Partially successful: {success_count}/{len(packages)} packages installed.[/yellow]"
+                    )
                     if failures:
-                        console.print(f"[yellow]Failed packages: {', '.join(failures)}[/yellow]")
+                        console.print(
+                            f"[yellow]Failed packages: {', '.join(failures)}[/yellow]"
+                        )
                     self.logger.warning(
                         f"Only {success_count}/{len(packages)} packages installed: {packages}"
                     )
@@ -541,7 +561,7 @@ class AutoRig:
                 self.logger.error(f"Package installation error: {e}")
                 raise
 
-    def _process_git_repos_with_tracking(self, tracker: 'OperationTracker'):
+    def _process_git_repos_with_tracking(self, tracker: "OperationTracker"):
         repos = self.config.git.repositories
         if not repos:
             self.logger.debug("No git repositories to process")
@@ -563,7 +583,12 @@ class AutoRig:
                     self.logger.error(
                         f"Security error: Invalid repository path: {repo.path}"
                     )
-                    tracker.record_change("security_error", repo.path, error="path_traversal", url=repo.url)
+                    tracker.record_change(
+                        "security_error",
+                        repo.path,
+                        error="path_traversal",
+                        url=repo.url,
+                    )
                     self.progress_tracker.update_progress(f"Security error: {repo.url}")
                     continue
 
@@ -582,8 +607,12 @@ class AutoRig:
                             console.print(
                                 f"[yellow]DRY RUN: Would pull in {target_path}[/yellow]"
                             )
-                            tracker.record_change("would_pull_repo", repo.path, url=repo.url)
-                            self.progress_tracker.update_progress(f"Dry run: update {repo.url}")
+                            tracker.record_change(
+                                "would_pull_repo", repo.path, url=repo.url
+                            )
+                            self.progress_tracker.update_progress(
+                                f"Dry run: update {repo.url}"
+                            )
                             continue
 
                         try:
@@ -597,8 +626,12 @@ class AutoRig:
                             if self.verbose and result.stdout:
                                 console.print(f"[dim]Git output: {result.stdout}[/dim]")
                             self.logger.info(f"Updated git repo: {repo.url}")
-                            tracker.record_change("updated_repo", repo.path, url=repo.url)
-                            self.progress_tracker.update_progress(f"Updated: {repo.url}")
+                            tracker.record_change(
+                                "updated_repo", repo.path, url=repo.url
+                            )
+                            self.progress_tracker.update_progress(
+                                f"Updated: {repo.url}"
+                            )
                         except subprocess.CalledProcessError as e:
                             console.print(
                                 f"[red]Failed to update {repo.url}: {e}[/red]"
@@ -606,7 +639,13 @@ class AutoRig:
                             if e.stderr:
                                 console.print(f"[red]Git error: {e.stderr}[/red]")
                             self.logger.error(f"Failed to update {repo.url}: {e}")
-                            tracker.record_change("updated_repo", repo.path, url=repo.url, status="failed", error=str(e))
+                            tracker.record_change(
+                                "updated_repo",
+                                repo.path,
+                                url=repo.url,
+                                status="failed",
+                                error=str(e),
+                            )
                             self.progress_tracker.update_progress(f"Failed: {repo.url}")
                     else:
                         console.print(
@@ -615,8 +654,15 @@ class AutoRig:
                         self.logger.warning(
                             f"Path exists but is not a git repository: {repo.path}"
                         )
-                        tracker.record_change("invalid_repo_path", repo.path, url=repo.url, error="not_git_repo")
-                        self.progress_tracker.update_progress(f"Non-git path: {repo.path}")
+                        tracker.record_change(
+                            "invalid_repo_path",
+                            repo.path,
+                            url=repo.url,
+                            error="not_git_repo",
+                        )
+                        self.progress_tracker.update_progress(
+                            f"Non-git path: {repo.path}"
+                        )
                     continue
 
                 console.print(f"Cloning {repo.url} to {repo.path}...")
@@ -648,16 +694,24 @@ class AutoRig:
                     if e.stderr:
                         console.print(f"[red]Git error: {e.stderr}[/red]")
                     self.logger.error(f"Failed to clone {repo.url}: {e}")
-                    tracker.record_change("git_cloned", repo.path, url=repo.url, status="failed", error=str(e))
+                    tracker.record_change(
+                        "git_cloned",
+                        repo.path,
+                        url=repo.url,
+                        status="failed",
+                        error=str(e),
+                    )
                     self.progress_tracker.update_progress(f"Failed: {repo.url}")
 
             except Exception as e:
                 console.print(f"[red]Error processing repository {repo.url}: {e}[/red]")
                 self.logger.error(f"Error processing repository {repo.url}: {e}")
-                tracker.record_change("process_repo_error", repo.path, url=repo.url, error=str(e))
+                tracker.record_change(
+                    "process_repo_error", repo.path, url=repo.url, error=str(e)
+                )
                 self.progress_tracker.update_progress(f"Error: {repo.url}")
 
-    def _link_dotfiles_with_tracking(self, tracker: 'OperationTracker'):
+    def _link_dotfiles_with_tracking(self, tracker: "OperationTracker"):
         dotfiles = self.config.dotfiles
         if not dotfiles:
             self.logger.debug("No dotfiles to link")
@@ -691,21 +745,34 @@ class AutoRig:
                     self.logger.error(
                         f"Security error: Source path outside config directory: {source}"
                     )
-                    tracker.record_change("security_error", str(target), error="source_outside_config", source=str(source))
-                    self.progress_tracker.update_progress(f"Security error: {df.target}")
+                    tracker.record_change(
+                        "security_error",
+                        str(target),
+                        error="source_outside_config",
+                        source=str(source),
+                    )
+                    self.progress_tracker.update_progress(
+                        f"Security error: {df.target}"
+                    )
                     continue
 
                 if not source.exists():
                     console.print(f"[red]Source file not found:[/red] {source}")
                     self.logger.warning(f"Source file not found: {source}")
-                    tracker.record_change("missing_source", str(target), source=str(source))
+                    tracker.record_change(
+                        "missing_source", str(target), source=str(source)
+                    )
                     self.progress_tracker.update_progress(f"Missing source: {source}")
                     continue
 
                 # Track existing file state before modification
                 original_exists = target.exists() or target.is_symlink()
                 original_is_symlink = target.is_symlink()
-                original_path = str(target.resolve()) if target.is_symlink() else str(target) if target.exists() else None
+                original_path = (
+                    str(target.resolve())
+                    if target.is_symlink()
+                    else str(target) if target.exists() else None
+                )
 
                 if target.exists() or target.is_symlink():
                     if not self.force:
@@ -718,11 +785,14 @@ class AutoRig:
                         self.logger.info(f"Backing up {target} to {backup}")
 
                         # Record the backup action
-                        tracker.record_change("backup_file", str(target),
-                                            backup_path=str(backup),
-                                            exists=original_exists,
-                                            is_symlink=original_is_symlink,
-                                            original_path=original_path)
+                        tracker.record_change(
+                            "backup_file",
+                            str(target),
+                            backup_path=str(backup),
+                            exists=original_exists,
+                            is_symlink=original_is_symlink,
+                            original_path=original_path,
+                        )
 
                         if not self.dry_run:
                             if target.is_symlink():
@@ -735,9 +805,12 @@ class AutoRig:
                         )
                         self.logger.info(f"Force mode: removing existing {target}")
                         # Record the deletion action
-                        tracker.record_change("deleted_file", str(target),
-                                            is_symlink=original_is_symlink,
-                                            original_path=original_path)
+                        tracker.record_change(
+                            "deleted_file",
+                            str(target),
+                            is_symlink=original_is_symlink,
+                            original_path=original_path,
+                        )
 
                         if not self.dry_run:
                             if target.is_symlink():
@@ -757,9 +830,12 @@ class AutoRig:
                     console.print(
                         f"[yellow]DRY RUN: Would link {target} -> {source}[/yellow]"
                     )
-                    tracker.record_change("would_create_symlink", str(target),
-                                        source=str(source),
-                                        is_template=(source.suffix == ".j2"))
+                    tracker.record_change(
+                        "would_create_symlink",
+                        str(target),
+                        source=str(source),
+                        is_template=(source.suffix == ".j2"),
+                    )
                     self.progress_tracker.update_progress(f"Dry run: {df.target}")
                     continue
 
@@ -773,33 +849,44 @@ class AutoRig:
                         )
                         console.print(f"[green]Rendered {target} from {source}[/green]")
                         self.logger.info(f"Rendered template {source} to {target}")
-                        tracker.record_change("created_rendered_file", str(target),
-                                            source=str(source),
-                                            action="rendered_from_template")
+                        tracker.record_change(
+                            "created_rendered_file",
+                            str(target),
+                            source=str(source),
+                            action="rendered_from_template",
+                        )
                         self.progress_tracker.update_progress(f"Rendered: {df.target}")
                     except Exception as e:
                         console.print(f"[red]Failed to render {target}: {e}[/red]")
                         self.logger.error(f"Template render failed for {target}: {e}")
-                        tracker.record_change("failed_render", str(target),
-                                            source=str(source),
-                                            error=str(e))
-                        self.progress_tracker.update_progress(f"Failed render: {df.target}")
+                        tracker.record_change(
+                            "failed_render",
+                            str(target),
+                            source=str(source),
+                            error=str(e),
+                        )
+                        self.progress_tracker.update_progress(
+                            f"Failed render: {df.target}"
+                        )
                     continue
 
                 try:
                     target.symlink_to(source)
                     console.print(f"[green]Linked {target} -> {source}[/green]")
                     self.logger.info(f"Linked {target} -> {source}")
-                    tracker.record_change("created_symlink", str(target),
-                                        source=str(source),
-                                        action="created_symlink")
+                    tracker.record_change(
+                        "created_symlink",
+                        str(target),
+                        source=str(source),
+                        action="created_symlink",
+                    )
                     self.progress_tracker.update_progress(f"Linked: {df.target}")
                 except Exception as e:
                     console.print(f"[red]Failed to link {target}: {e}[/red]")
                     self.logger.error(f"Link failed for {target}: {e}")
-                    tracker.record_change("failed_symlink", str(target),
-                                        source=str(source),
-                                        error=str(e))
+                    tracker.record_change(
+                        "failed_symlink", str(target), source=str(source), error=str(e)
+                    )
                     self.progress_tracker.update_progress(f"Failed link: {df.target}")
 
             except Exception as e:
@@ -809,12 +896,12 @@ class AutoRig:
                 self.logger.error(
                     f"Error processing dotfile {df.source} -> {df.target}: {e}"
                 )
-                tracker.record_change("dotfile_error", df.target,
-                                    source=df.source,
-                                    error=str(e))
+                tracker.record_change(
+                    "dotfile_error", df.target, source=df.source, error=str(e)
+                )
                 self.progress_tracker.update_progress(f"Error: {df.target}")
 
-    def _run_scripts_with_tracking(self, tracker: 'OperationTracker'):
+    def _run_scripts_with_tracking(self, tracker: "OperationTracker"):
         scripts = self.config.scripts
         if not scripts:
             self.logger.debug("No scripts to run")
@@ -832,7 +919,9 @@ class AutoRig:
             if not self._is_safe_command(script.command):
                 console.print(f"[red]✗ Unsafe command blocked: {script.command}[/red]")
                 self.logger.error(f"Unsafe command blocked: {script.command}")
-                tracker.record_change("blocked_unsafe_script", script.command, description=desc)
+                tracker.record_change(
+                    "blocked_unsafe_script", script.command, description=desc
+                )
                 self.progress_tracker.update_progress(f"Blocked unsafe script: {desc}")
                 continue
 
@@ -842,8 +931,9 @@ class AutoRig:
                 console.print(
                     f"[yellow]DRY RUN: Would execute: {script.command}[/yellow]"
                 )
-                tracker.record_change("would_execute_script", script.command,
-                                    description=desc, cwd=cwd)
+                tracker.record_change(
+                    "would_execute_script", script.command, description=desc, cwd=cwd
+                )
                 self.progress_tracker.update_progress(f"Dry run: {desc}")
                 continue
 
@@ -867,18 +957,27 @@ class AutoRig:
                             else f"[dim]Output: {result.stdout}[/dim]"
                         )
                 self.logger.info(f"Script completed: {desc}")
-                tracker.record_change("executed_script", script.command,
-                                    description=desc, status="success",
-                                    output=result.stdout[:500] if result.stdout else "")
+                tracker.record_change(
+                    "executed_script",
+                    script.command,
+                    description=desc,
+                    status="success",
+                    output=result.stdout[:500] if result.stdout else "",
+                )
                 self.progress_tracker.update_progress(f"Completed: {desc}")
             except subprocess.CalledProcessError as e:
                 console.print(f"[red]✗ Failed: {desc} ({e})[/red]")
                 if e.stderr:
                     console.print(f"[red]Error: {e.stderr}[/red]")
                 self.logger.error(f"Script failed: {desc} - {e}")
-                tracker.record_change("executed_script", script.command,
-                                    description=desc, status="failed", error=str(e),
-                                    stderr=e.stderr if e.stderr else "")
+                tracker.record_change(
+                    "executed_script",
+                    script.command,
+                    description=desc,
+                    status="failed",
+                    error=str(e),
+                    stderr=e.stderr if e.stderr else "",
+                )
                 self.progress_tracker.update_progress(f"Failed: {desc}")
 
     def _run_scripts(self):
@@ -969,7 +1068,9 @@ class AutoRig:
         command_lower = command.lower()
         for pattern in dangerous_patterns:
             if re.search(pattern, command_lower):
-                self.logger.warning(f"Blocked command with dangerous pattern: {pattern}")
+                self.logger.warning(
+                    f"Blocked command with dangerous pattern: {pattern}"
+                )
                 return False
 
         # Additional validation: check for dangerous paths
@@ -979,7 +1080,9 @@ class AutoRig:
             # Remove quotes and normalize
             clean_part = part.strip("'\"")
             if any(clean_part.startswith(path) for path in dangerous_paths):
-                self.logger.warning(f"Blocked command with dangerous path: {clean_part}")
+                self.logger.warning(
+                    f"Blocked command with dangerous path: {clean_part}"
+                )
                 return False
 
         return True

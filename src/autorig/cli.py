@@ -49,9 +49,14 @@ def apply(
     """
     try:
         from .remote import resolve_config_path
+
         local_config_path = resolve_config_path(config)
         rig = AutoRig(
-            local_config_path, dry_run=dry_run, verbose=verbose, force=force, profile=profile
+            local_config_path,
+            dry_run=dry_run,
+            verbose=verbose,
+            force=force,
+            profile=profile,
         )
         rig.apply()
     except Exception as e:
@@ -79,8 +84,11 @@ def clean(
     """
     try:
         from .remote import resolve_config_path
+
         local_config_path = resolve_config_path(config)
-        rig = AutoRig(local_config_path, dry_run=dry_run, verbose=verbose, profile=profile)
+        rig = AutoRig(
+            local_config_path, dry_run=dry_run, verbose=verbose, profile=profile
+        )
         rig.clean()
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
@@ -104,6 +112,7 @@ def validate(
     """
     try:
         from .remote import resolve_config_path
+
         local_config_path = resolve_config_path(config)
         AutoRig(local_config_path, verbose=verbose, profile=profile)
         console.print(
@@ -132,6 +141,7 @@ def backup(
     """
     try:
         from .remote import resolve_config_path
+
         local_config_path = resolve_config_path(config)
         rig = AutoRig(local_config_path, verbose=verbose, profile=profile)
         rig.backup()
@@ -158,6 +168,7 @@ def restore(
     """
     try:
         from .remote import resolve_config_path
+
         local_config_path = resolve_config_path(config)
         rig = AutoRig(local_config_path, verbose=verbose, profile=profile)
         rig.restore(snapshot)
@@ -183,6 +194,7 @@ def status(
     """
     try:
         from .remote import resolve_config_path
+
         local_config_path = resolve_config_path(config)
         rig = AutoRig(local_config_path, verbose=verbose, profile=profile)
         rig.status()
@@ -209,6 +221,7 @@ def diff(
     """
     try:
         from .remote import resolve_config_path
+
         local_config_path = resolve_config_path(config)
         rig = AutoRig(local_config_path, verbose=verbose, profile=profile)
         rig.diff()
@@ -235,6 +248,7 @@ def rollback(
     """
     try:
         from .remote import resolve_config_path
+
         local_config_path = resolve_config_path(config)
         rig = AutoRig(local_config_path, verbose=verbose, profile=profile)
         rig.rollback()
@@ -261,6 +275,7 @@ def watch(
     """
     try:
         from .remote import resolve_config_path
+
         local_config_path = resolve_config_path(config)
         rig = AutoRig(local_config_path, verbose=verbose, profile=profile)
         rig.watch()
@@ -313,8 +328,11 @@ def sync(
     """
     try:
         from .remote import resolve_config_path
+
         local_config_path = resolve_config_path(config)
-        rig = AutoRig(local_config_path, dry_run=dry_run, verbose=verbose, profile=profile)
+        rig = AutoRig(
+            local_config_path, dry_run=dry_run, verbose=verbose, profile=profile
+        )
         rig.sync_repos()
     except Exception as e:
         console.print(f"[bold red]Error syncing repos:[/bold red] {e}")
@@ -343,8 +361,11 @@ def run_plugins(
     """
     try:
         from .remote import resolve_config_path
+
         local_config_path = resolve_config_path(config)
-        rig = AutoRig(local_config_path, dry_run=dry_run, verbose=verbose, profile=profile)
+        rig = AutoRig(
+            local_config_path, dry_run=dry_run, verbose=verbose, profile=profile
+        )
         rig.run_plugins(plugins)
     except Exception as e:
         console.print(f"[bold red]Error running plugins:[/bold red] {e}")
@@ -356,8 +377,12 @@ def run_plugins(
     short_help="Show environment profile",
 )
 def detect(
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
-    detailed: bool = typer.Option(False, "--detailed", "-d", help="Show detailed environment information")
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose output"
+    ),
+    detailed: bool = typer.Option(
+        False, "--detailed", "-d", help="Show detailed environment information"
+    ),
 ):
     """
     Detect and show the current system environment profile.
@@ -378,17 +403,29 @@ def detect(
             console.print("\n[bold]Recommendations based on environment:[/bold]")
             # Provide recommendations based on detected environment
             if detector.env_info.get("is_wsl", False):
-                console.print("  [yellow]WSL detected:[/yellow] Consider installing Windows-specific tools via WSL interop")
+                console.print(
+                    "  [yellow]WSL detected:[/yellow] Consider installing Windows-specific tools via WSL interop"
+                )
             if detector.env_info.get("is_docker", False):
-                console.print("  [yellow]Docker container detected:[/yellow] Some system operations may be limited")
+                console.print(
+                    "  [yellow]Docker container detected:[/yellow] Some system operations may be limited"
+                )
             if detector.env_info.get("is_vm", False):
-                console.print("  [yellow]Virtual machine detected:[/yellow] Graphics acceleration may be limited")
+                console.print(
+                    "  [yellow]Virtual machine detected:[/yellow] Graphics acceleration may be limited"
+                )
             if detector.env_info.get("is_ci", False):
-                console.print("  [yellow]CI/CD environment detected:[/yellow] Non-interactive mode recommended")
+                console.print(
+                    "  [yellow]CI/CD environment detected:[/yellow] Non-interactive mode recommended"
+                )
             if detector.env_info.get("memory_gb", 0) < 4:
-                console.print("  [yellow]Low memory detected:[/yellow] Consider lighter-weight packages")
+                console.print(
+                    "  [yellow]Low memory detected:[/yellow] Consider lighter-weight packages"
+                )
             if detector.env_info.get("cpu_cores", 0) < 2:
-                console.print("  [yellow]Limited CPU cores:[/yellow] Some parallel operations may be slow")
+                console.print(
+                    "  [yellow]Limited CPU cores:[/yellow] Some parallel operations may be slow"
+                )
 
     except Exception as e:
         console.print(f"[bold red]Error detecting environment:[/bold red] {e}")
@@ -444,7 +481,9 @@ def report(
 )
 def remote(
     url: str = typer.Argument(..., help="URL to remote configuration file"),
-    command: str = typer.Argument("apply", help="Command to execute (apply, validate, status, etc.)"),
+    command: str = typer.Argument(
+        "apply", help="Command to execute (apply, validate, status, etc.)"
+    ),
     dry_run: bool = typer.Option(
         False, "--dry-run", "-n", help="Simulate actions without making changes"
     ),
@@ -474,36 +513,42 @@ def remote(
         # Handle special GitHub/GitLab shortcuts
         if url.startswith("github:"):
             # Format: github:owner/repo/path/to/config.yaml[@ref]
-            parts = url[7:].split('/')  # Remove 'github:' prefix
+            parts = url[7:].split("/")  # Remove 'github:' prefix
             if len(parts) >= 3:
                 owner = parts[0]
                 repo = parts[1]
                 path_parts = parts[2:]
 
                 # Check if there's a @ref at the end
-                path = '/'.join(path_parts)
+                path = "/".join(path_parts)
                 ref = "main"  # default
-                if '@' in path:
-                    path, ref = path.rsplit('@', 1)
+                if "@" in path:
+                    path, ref = path.rsplit("@", 1)
 
-                local_path = RemoteConfigManager.fetch_from_github(owner, repo, path, ref)
+                local_path = RemoteConfigManager.fetch_from_github(
+                    owner, repo, path, ref
+                )
             else:
-                raise ValueError("Invalid GitHub URL format. Use: github:owner/repo/path/to/file[@ref]")
+                raise ValueError(
+                    "Invalid GitHub URL format. Use: github:owner/repo/path/to/file[@ref]"
+                )
         elif url.startswith("gitlab:"):
             # Format: gitlab:owner/repo/path/to/config.yaml[@ref]
-            parts = url[7:].split('/')  # Remove 'gitlab:' prefix
+            parts = url[7:].split("/")  # Remove 'gitlab:' prefix
             if len(parts) >= 3:
                 owner = parts[0]
                 repo = parts[1]
                 path_parts = parts[2:]
 
                 # Check if there's a @ref at the end
-                path = '/'.join(path_parts)
+                path = "/".join(path_parts)
                 ref = "main"  # default
-                if '@' in path:
-                    path, ref = path.rsplit('@', 1)
+                if "@" in path:
+                    path, ref = path.rsplit("@", 1)
 
-                local_path = RemoteConfigManager.fetch_from_gitlab(owner, repo, path, ref)
+                local_path = RemoteConfigManager.fetch_from_gitlab(
+                    owner, repo, path, ref
+                )
         else:
             local_path = RemoteConfigManager.fetch_remote_config(url)
 
@@ -511,11 +556,19 @@ def remote(
         from .core import AutoRig
 
         if command == "apply":
-            rig = AutoRig(str(local_path), dry_run=dry_run, verbose=verbose, force=force, profile=profile)
+            rig = AutoRig(
+                str(local_path),
+                dry_run=dry_run,
+                verbose=verbose,
+                force=force,
+                profile=profile,
+            )
             rig.apply()
         elif command == "validate":
             AutoRig(str(local_path), verbose=verbose, profile=profile)
-            console.print(f"[bold green]Configuration file '{url}' is valid.[/bold green]")
+            console.print(
+                f"[bold green]Configuration file '{url}' is valid.[/bold green]"
+            )
         elif command == "status":
             rig = AutoRig(str(local_path), verbose=verbose, profile=profile)
             rig.status()
