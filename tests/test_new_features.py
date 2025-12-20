@@ -5,11 +5,8 @@ Tests for AutoRig - testing new functionality
 import pytest
 import tempfile
 import os
-from pathlib import Path
-from unittest.mock import Mock, patch, mock_open
 
 from autorig.config import RigConfig, Hooks
-from autorig.core import AutoRig
 from autorig.remote import RemoteConfigManager, resolve_config_path
 from autorig.notifications import NotificationManager, ProgressTracker
 from autorig.state import StateManager, OperationTracker

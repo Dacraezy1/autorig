@@ -3,11 +3,9 @@ Notification system for AutoRig.
 Provides various notification mechanisms for long-running operations.
 """
 
-import os
 import platform
 import subprocess
-from typing import Optional, Dict, Any
-from pathlib import Path
+from typing import Optional
 
 
 class NotificationManager:
@@ -51,9 +49,13 @@ class NotificationManager:
                 return False
         elif self.system == "windows":
             try:
-                import win10toast  # type: ignore[import-untyped]
+                import importlib.util  # type: ignore[import-untyped]
 
-                return True
+                # Check if win10toast is available
+                if importlib.util.find_spec("win10toast") is not None:
+                    return True
+                else:
+                    return False
             except ImportError:
                 return False
         else:
@@ -75,7 +77,7 @@ class NotificationManager:
                 self._send_linux_notification(title, message, duration, icon)
             elif self.system == "windows":  # Windows
                 self._send_windows_notification(title, message, duration, icon)
-        except Exception as e:
+        except Exception:
             # Don't let notification errors affect the main functionality
             pass
 

@@ -6,10 +6,9 @@ import pytest
 import tempfile
 import os
 from pathlib import Path
-from unittest.mock import Mock, patch, mock_open
+from unittest.mock import Mock, patch
 import yaml
 
-from autorig.cli import app
 from autorig.core import AutoRig
 from autorig.config import RigConfig
 
@@ -244,11 +243,11 @@ def test_secure_command_validation():
         try:
             rig = AutoRig(f.name)
             # Test the validation function directly
-            assert rig._is_safe_command("echo hello") == True
-            assert rig._is_safe_command("echo hello; rm -rf /") == False
-            assert rig._is_safe_command("echo hello && rm -rf /") == False
-            assert rig._is_safe_command("echo hello || rm -rf /") == False
-            assert rig._is_safe_command("eval 'rm -rf /'") == False
+            assert rig._is_safe_command("echo hello")
+            assert not rig._is_safe_command("echo hello; rm -rf /")
+            assert not rig._is_safe_command("echo hello && rm -rf /")
+            assert not rig._is_safe_command("echo hello || rm -rf /")
+            assert not rig._is_safe_command("eval 'rm -rf /'")
         finally:
             os.unlink(f.name)
 

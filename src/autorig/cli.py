@@ -505,7 +505,6 @@ def remote(
     """
     try:
         from .remote import RemoteConfigManager
-        import tempfile
         import os
 
         console.print(f"[blue]Fetching remote configuration:[/blue] {url}")
@@ -582,8 +581,8 @@ def remote(
         # Clean up temporary file after successful operation
         try:
             os.remove(local_path)
-            console.print(f"[green]Cleaned up temporary configuration file[/green]")
-        except:
+            console.print("[green]Cleaned up temporary configuration file[/green]")
+        except OSError:
             pass  # Don't fail if cleanup fails
 
     except Exception as e:

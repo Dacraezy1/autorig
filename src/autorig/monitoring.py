@@ -4,10 +4,8 @@ Monitoring and status reporting for AutoRig operations.
 
 import psutil
 import time
-import os
 from datetime import datetime
-from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from dataclasses import dataclass
 from rich.console import Console
 from rich.table import Table

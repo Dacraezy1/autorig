@@ -3,7 +3,7 @@ import os
 import json
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any
 from rich.console import Console
 from .config import RigConfig
 import sys
@@ -104,9 +104,6 @@ class BackupManager:
             if manifest_member:
                 manifest_file = tar.extractfile(manifest_member)
                 if manifest_file:
-                    manifest_content = manifest_file.read().decode("utf-8")
-                    manifest = json.loads(manifest_content)
-
                     # Extract files with safety checks
                     for member in tar.getmembers():
                         # Skip the manifest file itself
@@ -174,7 +171,7 @@ class BackupManager:
                             f"[red]Failed to restore {target_path}: {e}[/red]"
                         )
 
-            console.print(f"[green]Restored files based on manifest[/green]")
+            console.print("[green]Restored files based on manifest[/green]")
         except tarfile.ReadError:
             raise ValueError(f"Invalid tar archive: {path}")
 
