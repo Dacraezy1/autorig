@@ -285,7 +285,7 @@ class AutoRig:
         tasks = []
         for i, repo in enumerate(repos, 1):
             tasks.append(self._clone_or_update_repo(repo, i, len(repos)))
-        
+
         await asyncio.gather(*tasks)
 
     async def _process_git_repos_with_tracking(self, tracker: "OperationTracker"):
@@ -300,10 +300,12 @@ class AutoRig:
         tasks = []
         for i, repo in enumerate(repos, 1):
             tasks.append(self._clone_or_update_repo(repo, i, len(repos), tracker))
-        
+
         await asyncio.gather(*tasks)
 
-    async def _clone_or_update_repo(self, repo, index, total, tracker: Optional["OperationTracker"] = None):
+    async def _clone_or_update_repo(
+        self, repo, index, total, tracker: Optional["OperationTracker"] = None
+    ):
         try:
             target_path = Path(os.path.expanduser(repo.path))
 
@@ -352,16 +354,21 @@ class AutoRig:
 
                     try:
                         process = await asyncio.create_subprocess_exec(
-                            "git", "-C", str(target_path), "pull",
+                            "git",
+                            "-C",
+                            str(target_path),
+                            "pull",
                             stdout=asyncio.subprocess.PIPE,
-                            stderr=asyncio.subprocess.PIPE
+                            stderr=asyncio.subprocess.PIPE,
                         )
                         stdout, stderr = await process.communicate()
-                        
+
                         if process.returncode == 0:
                             console.print(f"[green]Updated {repo.url}[/green]")
                             if self.verbose and stdout:
-                                console.print(f"[dim]Git output: {stdout.decode()}[/dim]")
+                                console.print(
+                                    f"[dim]Git output: {stdout.decode()}[/dim]"
+                                )
                             self.logger.info(f"Updated git repo: {repo.url}")
                             if tracker:
                                 tracker.record_change(
@@ -371,12 +378,15 @@ class AutoRig:
                                 f"Updated: {repo.url}"
                             )
                         else:
-                            raise subprocess.CalledProcessError(process.returncode, ["git", "pull"], output=stdout.decode(), stderr=stderr.decode())
+                            raise subprocess.CalledProcessError(
+                                process.returncode,
+                                ["git", "pull"],
+                                output=stdout.decode(),
+                                stderr=stderr.decode(),
+                            )
 
                     except subprocess.CalledProcessError as e:
-                        console.print(
-                            f"[red]Failed to update {repo.url}: {e}[/red]"
-                        )
+                        console.print(f"[red]Failed to update {repo.url}: {e}[/red]")
                         if e.stderr:
                             console.print(f"[red]Git error: {e.stderr}[/red]")
                         self.logger.error(f"Failed to update {repo.url}: {e}")
@@ -403,9 +413,7 @@ class AutoRig:
                             url=repo.url,
                             error="not_git_repo",
                         )
-                    self.progress_tracker.update_progress(
-                        f"Non-git path: {repo.path}"
-                    )
+                    self.progress_tracker.update_progress(f"Non-git path: {repo.path}")
                 return
 
             console.print(f"Cloning {repo.url} to {repo.path}...")
@@ -429,10 +437,10 @@ class AutoRig:
                     repo.url,
                     str(target_path),
                     stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
+                    stderr=asyncio.subprocess.PIPE,
                 )
                 stdout, stderr = await process.communicate()
-                
+
                 if process.returncode == 0:
                     console.print(f"[green]Cloned {repo.url}[/green]")
                     if self.verbose and stdout:
@@ -442,7 +450,12 @@ class AutoRig:
                         tracker.record_change("git_cloned", repo.path, url=repo.url)
                     self.progress_tracker.update_progress(f"Cloned: {repo.url}")
                 else:
-                    raise subprocess.CalledProcessError(process.returncode, ["git", "clone"], output=stdout.decode(), stderr=stderr.decode())
+                    raise subprocess.CalledProcessError(
+                        process.returncode,
+                        ["git", "clone"],
+                        output=stdout.decode(),
+                        stderr=stderr.decode(),
+                    )
 
             except subprocess.CalledProcessError as e:
                 console.print(f"[red]Failed to clone {repo.url}: {e}[/red]")
@@ -1130,7 +1143,7 @@ scripts:
             return
 
         console.print(f"[bold]Syncing {len(repos)} git repositories...[/bold]")
-        
+
         async def _sync_one_repo(repo):
             target_path = Path(os.path.expanduser(repo.path))
             if target_path.exists() and (target_path / ".git").exists():
@@ -1142,30 +1155,41 @@ scripts:
                 try:
                     # Check for uncommitted changes just to inform
                     status_proc = await asyncio.create_subprocess_exec(
-                        "git", "-C", str(target_path), "status", "--porcelain",
+                        "git",
+                        "-C",
+                        str(target_path),
+                        "status",
+                        "--porcelain",
                         stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.PIPE
+                        stderr=asyncio.subprocess.PIPE,
                     )
                     stdout, _ = await status_proc.communicate()
-                    
+
                     if stdout.strip():
                         console.print(
                             f"[yellow]Warning: {repo.path} has uncommitted changes.[/yellow]"
                         )
 
                     push_proc = await asyncio.create_subprocess_exec(
-                        "git", "-C", str(target_path), "push",
+                        "git",
+                        "-C",
+                        str(target_path),
+                        "push",
                         stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.PIPE
+                        stderr=asyncio.subprocess.PIPE,
                     )
                     _, stderr = await push_proc.communicate()
-                    
+
                     if push_proc.returncode == 0:
                         console.print(f"[green]Pushed {repo.path}[/green]")
                         self.logger.info(f"Pushed git repo: {repo.path}")
                     else:
-                        console.print(f"[red]Failed to push {repo.path}: {stderr.decode()}[/red]")
-                        self.logger.error(f"Failed to push {repo.path}: {stderr.decode()}")
+                        console.print(
+                            f"[red]Failed to push {repo.path}: {stderr.decode()}[/red]"
+                        )
+                        self.logger.error(
+                            f"Failed to push {repo.path}: {stderr.decode()}"
+                        )
                 except Exception as e:
                     console.print(f"[red]Error syncing {repo.path}: {e}[/red]")
                     self.logger.error(f"Error syncing {repo.path}: {e}")
