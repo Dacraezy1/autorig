@@ -379,7 +379,7 @@ class AutoRig:
                             )
                         else:
                             raise subprocess.CalledProcessError(
-                                process.returncode,
+                                process.returncode or 1,
                                 ["git", "pull"],
                                 output=stdout.decode(),
                                 stderr=stderr.decode(),
@@ -451,7 +451,7 @@ class AutoRig:
                     self.progress_tracker.update_progress(f"Cloned: {repo.url}")
                 else:
                     raise subprocess.CalledProcessError(
-                        process.returncode,
+                        process.returncode or 1,
                         ["git", "clone"],
                         output=stdout.decode(),
                         stderr=stderr.decode(),
