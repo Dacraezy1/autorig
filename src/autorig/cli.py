@@ -49,6 +49,7 @@ def apply(
     """
     try:
         from .remote import resolve_config_path
+        import asyncio
 
         local_config_path = resolve_config_path(config)
         rig = AutoRig(
@@ -58,7 +59,7 @@ def apply(
             force=force,
             profile=profile,
         )
-        rig.apply()
+        asyncio.run(rig.apply())
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
         raise typer.Exit(code=1)
@@ -328,12 +329,13 @@ def sync(
     """
     try:
         from .remote import resolve_config_path
+        import asyncio
 
         local_config_path = resolve_config_path(config)
         rig = AutoRig(
             local_config_path, dry_run=dry_run, verbose=verbose, profile=profile
         )
-        rig.sync_repos()
+        asyncio.run(rig.sync_repos())
     except Exception as e:
         console.print(f"[bold red]Error syncing repos:[/bold red] {e}")
         raise typer.Exit(code=1)
@@ -553,6 +555,7 @@ def remote(
 
         # Execute the requested command
         from .core import AutoRig
+        import asyncio
 
         if command == "apply":
             rig = AutoRig(
@@ -562,7 +565,7 @@ def remote(
                 force=force,
                 profile=profile,
             )
-            rig.apply()
+            asyncio.run(rig.apply())
         elif command == "validate":
             AutoRig(str(local_path), verbose=verbose, profile=profile)
             console.print(
@@ -587,6 +590,53 @@ def remote(
 
     except Exception as e:
         console.print(f"[bold red]Error with remote config:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
+@app.command(
+    help="Export the configuration to other formats (e.g., DevContainer).",
+    short_help="Export configuration",
+)
+def export(
+    format: str = typer.Argument(
+        ..., help="Format to export to (currently supported: devcontainer)"
+    ),
+    config: str = typer.Option(
+        "rig.yaml", "--config", "-c", help="Path to rig.yaml config file"
+    ),
+    output: str = typer.Option(
+        ".", "--output", "-o", help="Output directory for the export"
+    ),
+    profile: str = typer.Option(
+        None, "--profile", "-p", help="Use a specific profile configuration"
+    ),
+):
+    """
+    Export the configuration to other formats.
+    """
+    try:
+        from .config import RigConfig
+        from .exporters.devcontainer import DevContainerExporter
+        from .remote import resolve_config_path
+
+        if format.lower() != "devcontainer":
+            console.print(
+                f"[red]Unsupported format: {format}. Supported: devcontainer[/red]"
+            )
+            raise typer.Exit(code=1)
+
+        local_config_path = resolve_config_path(config)
+        rig_config = RigConfig.from_yaml(local_config_path, profile)
+
+        if format.lower() == "devcontainer":
+            exporter = DevContainerExporter(rig_config, local_config_path, output)
+            exporter.export()
+            console.print(
+                f"[bold green]Successfully exported DevContainer to {output}/.devcontainer[/bold green]"
+            )
+
+    except Exception as e:
+        console.print(f"[bold red]Error exporting:[/bold red] {e}")
         raise typer.Exit(code=1)
 
 

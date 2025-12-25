@@ -5,6 +5,7 @@ Additional tests for AutoRig CLI and integration testing
 import pytest
 import tempfile
 import os
+import asyncio
 from pathlib import Path
 from unittest.mock import Mock, patch
 import yaml
@@ -125,7 +126,7 @@ def test_autorig_with_new_features(mock_subprocess, mock_env_info):
             # Apply should work with all new features
             # Since we're in dry-run mode, this shouldn't make actual changes
             # but should process all the new features correctly
-            rig.apply()
+            asyncio.run(rig.apply())
 
             # Verify that no actual system operations were attempted in dry-run
             # (this is just to make sure the code path works)

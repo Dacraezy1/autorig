@@ -15,6 +15,8 @@
   - **💾 Automated Backups**: Creates full tarball snapshots of your dotfiles and provides easy restore capabilities.
   - **🛡️ Safe Operation**: Automatically backs up existing files with timestamps (e.g., `.bashrc.20231027-103000.bak`) and prevents unwanted overwrites.
 - **🐙 Git Repository Management**: Clone repositories if missing, or pull updates if they exist.
+- **⚡ Async & Parallel Execution**: Core operations now run asynchronously with parallel execution for git repositories, significantly speeding up applying configurations and syncing.
+- **🐳 DevContainer Export**: Generate VS Code DevContainer configurations (`Dockerfile` + `devcontainer.json`) directly from your `rig.yaml`, automatically including your dotfiles.
 - **⚡ Custom Script Execution**: Execute post-install shell commands (e.g., installing plugins, setting shell defaults).
 - **🎭 Pre/Post Hooks System**: Execute custom scripts before and after major operations (system, git, dotfiles, scripts). Supports `pre_system`, `post_system`, `pre_git`, `post_git`, `pre_dotfiles`, `post_dotfiles`, `pre_scripts`, and `post_scripts` hooks.
 - **🛡️ Dry Run Mode**: Preview all actions without making any changes to your system.
@@ -28,7 +30,7 @@
 - **🎯 Enhanced Profile Detection**: Automatic environment detection with expanded variables (VM, CI/CD, hardware specs, etc.) and intelligent recommendations.
 - **🔌 Plugin Architecture**: Extensible plugin system for custom functionality.
 - **🔧 Enhanced CLI**: More intuitive options and help text with `-n` (dry-run), `-v` (verbose), `-f` (force), `-p` (profile), `-d` (detailed detection), and `-o` (output) flags.
-- **🛡️ Improved Security**: Enhanced validation and security checks for commands and file paths with expanded pattern matching.
+- **🛡️ Improved Security**: Enhanced validation and security checks for commands and file paths, now integrated into async execution paths for safer parallel operations.
 - **🔄 Error Recovery & Rollback**: Automatic state tracking with rollback capabilities to revert changes on failure.
 - **📈 Monitoring & Reporting**: Real-time resource monitoring and status reporting with system resource usage tracking.
 - **📋 Configuration Schema Validation**: JSON schema validation for configuration files to catch errors early.
@@ -130,6 +132,18 @@ With dry run:
 autorig sync rig.yaml --dry-run
 ```
 
+#### Export DevContainer
+Generate a VS Code DevContainer setup from your configuration:
+
+```bash
+autorig export devcontainer --config rig.yaml --output .
+```
+
+This will create a `.devcontainer` directory containing:
+- `devcontainer.json`: Configured with your extensions and settings.
+- `Dockerfile`: Based on a standard base image, installing your system packages.
+- `dotfiles/`: A copy of your dotfiles to be automatically installed in the container.
+
 #### Status & Inspection
 View the status of your links and repositories:
 
@@ -187,8 +201,9 @@ autorig validate rig.yaml
 Execute specific plugins:
 
 ```bash
-autorig run-plugins rig.yaml myplugin
+autorig run-plugins rig.yaml python-dev
 ```
+See the [Plugins](#-plugins) section for available plugins and configuration.
 
 #### Status Reporting
 Generate comprehensive status reports for your configurations:
@@ -510,6 +525,29 @@ profiles:
 scripts:
   - command: "echo 'Configuration applied for profile-dependent setup'"
     description: "Confirmation script"
+```
+
+## 🔌 Plugins
+
+AutoRig supports a plugin architecture to extend its functionality.
+
+### Python Dev Plugin (`python-dev`)
+Sets up a Python development environment with a virtual environment and packages.
+
+**Configuration Variables:**
+- `python_version`: Version string (e.g., "3.9") - *currently informational in default plugin*
+- `python_venv`: Name/Path of the virtual environment directory (default: `.venv`)
+- `skip_venv`: Set to `true` to skip virtual environment creation
+- `python_packages`: List of pip packages to install in the virtual environment
+
+**Example Usage in `rig.yaml`:**
+```yaml
+variables:
+  python_venv: ".dev_env"
+  python_packages:
+    - black
+    - pytest
+    - requests
 ```
 
 ## 🤝 Contributing

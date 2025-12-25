@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import difflib
 import re
+import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
@@ -55,7 +56,7 @@ class AutoRig:
         config_dir = Path(self.config_path).parent.absolute()
         self.renderer = TemplateRenderer(config_dir)
 
-    def apply(self):
+    async def apply(self):
         mode = "[DRY RUN] " if self.dry_run else ""
         console.print(
             f"[bold green]{mode}Applying configuration: {self.config.name}[/bold green]"
@@ -121,7 +122,7 @@ class AutoRig:
 
                 self.logger.debug("Starting git repository processing")
                 status.update("[bold blue]Processing git repositories...[/bold blue]")
-                self._process_git_repos_with_tracking(tracker)
+                await self._process_git_repos_with_tracking(tracker)
                 self.progress_tracker.update_progress("Git repositories processed")
 
                 # Execute post-git hooks
@@ -219,302 +220,6 @@ class AutoRig:
                 self.logger.error(f"Package installation error: {e}")
                 raise
 
-    def _process_git_repos(self):
-        repos = self.config.git.repositories
-        if not repos:
-            self.logger.debug("No git repositories to process")
-            return
-
-        console.print(f"[bold]Processing {len(repos)} git repositories...[/bold]")
-        self.logger.info(f"Processing {len(repos)} git repositories")
-
-        for i, repo in enumerate(repos, 1):
-            try:
-                target_path = Path(os.path.expanduser(repo.path))
-
-                # Security check for path traversal
-                expanded_path = os.path.expanduser(repo.path)
-                if ".." in expanded_path or expanded_path.startswith("/tmp"):
-                    console.print(
-                        f"[red]Security error: Invalid repository path: {repo.path}[/red]"
-                    )
-                    self.logger.error(
-                        f"Security error: Invalid repository path: {repo.path}"
-                    )
-                    self.progress_tracker.update_progress(f"Security error: {repo.url}")
-                    continue
-
-                console.print(
-                    f"[dim]Processing repository {i}/{len(repos)}: {repo.url}[/dim]"
-                )
-                self.logger.debug(f"Processing repository {i}/{len(repos)}: {repo.url}")
-
-                if target_path.exists():
-                    if (target_path / ".git").exists():
-                        console.print(
-                            f"[yellow]Path exists, updating:[/yellow] {repo.path}"
-                        )
-                        self.logger.info(f"Repository exists, updating: {repo.url}")
-                        if self.dry_run:
-                            console.print(
-                                f"[yellow]DRY RUN: Would pull in {target_path}[/yellow]"
-                            )
-                            self.progress_tracker.update_progress(
-                                f"Dry run: update {repo.url}"
-                            )
-                            continue
-
-                        try:
-                            result = subprocess.run(
-                                ["git", "-C", str(target_path), "pull"],
-                                check=True,
-                                capture_output=True,
-                                text=True,
-                            )
-                            console.print(f"[green]Updated {repo.url}[/green]")
-                            if self.verbose and result.stdout:
-                                console.print(f"[dim]Git output: {result.stdout}[/dim]")
-                            self.logger.info(f"Updated git repo: {repo.url}")
-                            self.progress_tracker.update_progress(
-                                f"Updated: {repo.url}"
-                            )
-                        except subprocess.CalledProcessError as e:
-                            console.print(
-                                f"[red]Failed to update {repo.url}: {e}[/red]"
-                            )
-                            if e.stderr:
-                                console.print(f"[red]Git error: {e.stderr}[/red]")
-                            self.logger.error(f"Failed to update {repo.url}: {e}")
-                            self.progress_tracker.update_progress(f"Failed: {repo.url}")
-                    else:
-                        console.print(
-                            f"[yellow]Path exists but is not a git repository: {repo.path}[/yellow]"
-                        )
-                        self.logger.warning(
-                            f"Path exists but is not a git repository: {repo.path}"
-                        )
-                        self.progress_tracker.update_progress(
-                            f"Non-git path: {repo.path}"
-                        )
-                    continue
-
-                console.print(f"Cloning {repo.url} to {repo.path}...")
-                self.logger.info(f"Cloning repository: {repo.url} to {repo.path}")
-                if self.dry_run:
-                    console.print(f"[yellow]DRY RUN: Would clone {repo.url}[/yellow]")
-                    self.progress_tracker.update_progress(f"Dry run: clone {repo.url}")
-                    continue
-
-                # Ensure parent directory exists
-                target_path.parent.mkdir(parents=True, exist_ok=True)
-
-                try:
-                    result = subprocess.run(
-                        [
-                            "git",
-                            "clone",
-                            "-b",
-                            repo.branch or "main",
-                            repo.url,
-                            str(target_path),
-                        ],
-                        check=True,
-                        capture_output=True,
-                        text=True,
-                    )
-                    console.print(f"[green]Cloned {repo.url}[/green]")
-                    if self.verbose and result.stdout:
-                        console.print(f"[dim]Git output: {result.stdout}[/dim]")
-                    self.logger.info(f"Cloned git repo: {repo.url}")
-                    self.progress_tracker.update_progress(f"Cloned: {repo.url}")
-                except subprocess.CalledProcessError as e:
-                    console.print(f"[red]Failed to clone {repo.url}: {e}[/red]")
-                    if e.stderr:
-                        console.print(f"[red]Git error: {e.stderr}[/red]")
-                    self.logger.error(f"Failed to clone {repo.url}: {e}")
-                    self.progress_tracker.update_progress(f"Failed: {repo.url}")
-
-            except Exception as e:
-                console.print(f"[red]Error processing repository {repo.url}: {e}[/red]")
-                self.logger.error(f"Error processing repository {repo.url}: {e}")
-                self.progress_tracker.update_progress(f"Error: {repo.url}")
-
-    def _link_dotfiles(self):
-        dotfiles = self.config.dotfiles
-        if not dotfiles:
-            self.logger.debug("No dotfiles to link")
-            return
-
-        console.print(f"[bold]Linking {len(dotfiles)} dotfiles...[/bold]")
-        self.logger.info(f"Linking {len(dotfiles)} dotfiles")
-        config_dir = Path(self.config_path).parent.absolute()
-
-        for i, df in enumerate(dotfiles, 1):
-            try:
-                console.print(
-                    f"[dim]Processing dotfile {i}/{len(dotfiles)}: {df.target}[/dim]"
-                )
-                self.logger.debug(
-                    f"Processing dotfile {i}/{len(dotfiles)}: {df.target}"
-                )
-
-                # Resolve source relative to config file location
-                source = (config_dir / os.path.expanduser(df.source)).resolve()
-                target = Path(os.path.expanduser(df.target))
-
-                # Security check: ensure source is within config directory
-                try:
-                    source.relative_to(config_dir)
-                except ValueError:
-                    console.print(
-                        f"[red]Security error: Source path outside config directory: {source}[/red]"
-                    )
-                    self.logger.error(
-                        f"Security error: Source path outside config directory: {source}"
-                    )
-                    self.progress_tracker.update_progress(
-                        f"Security error: {df.target}"
-                    )
-                    continue
-
-                if not source.exists():
-                    console.print(f"[red]Source file not found:[/red] {source}")
-                    self.logger.warning(f"Source file not found: {source}")
-                    self.progress_tracker.update_progress(f"Missing source: {source}")
-                    continue
-
-                if target.exists() or target.is_symlink():
-                    if not self.force:
-                        # Backup existing
-                        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-                        backup = Path(f"{target}.{timestamp}.bak")
-                        console.print(
-                            f"[yellow]Backing up existing {target} to {backup}[/yellow]"
-                        )
-                        self.logger.info(f"Backing up {target} to {backup}")
-
-                        if not self.dry_run:
-                            if target.is_symlink():
-                                target.unlink()
-                            else:
-                                shutil.move(str(target), str(backup))
-                    else:
-                        console.print(
-                            f"[yellow]Force mode: removing existing {target}[/yellow]"
-                        )
-                        self.logger.info(f"Force mode: removing existing {target}")
-                        if not self.dry_run:
-                            if target.is_symlink():
-                                target.unlink()
-                            else:
-                                (
-                                    target.unlink()
-                                    if target.is_file()
-                                    else shutil.rmtree(target)
-                                )
-
-                # Ensure parent dir exists
-                if not self.dry_run:
-                    target.parent.mkdir(parents=True, exist_ok=True)
-
-                if self.dry_run:
-                    console.print(
-                        f"[yellow]DRY RUN: Would link {target} -> {source}[/yellow]"
-                    )
-                    self.progress_tracker.update_progress(f"Dry run: {df.target}")
-                    continue
-
-                # Check for template
-                if source.suffix == ".j2":
-                    try:
-                        # Render relative path from config_dir
-                        rel_source = source.relative_to(config_dir)
-                        self.renderer.render(
-                            str(rel_source), self.config.variables, target
-                        )
-                        console.print(f"[green]Rendered {target} from {source}[/green]")
-                        self.logger.info(f"Rendered template {source} to {target}")
-                        self.progress_tracker.update_progress(f"Rendered: {df.target}")
-                    except Exception as e:
-                        console.print(f"[red]Failed to render {target}: {e}[/red]")
-                        self.logger.error(f"Template render failed for {target}: {e}")
-                        self.progress_tracker.update_progress(
-                            f"Failed render: {df.target}"
-                        )
-                    continue
-
-                try:
-                    target.symlink_to(source)
-                    console.print(f"[green]Linked {target} -> {source}[/green]")
-                    self.logger.info(f"Linked {target} -> {source}")
-                    self.progress_tracker.update_progress(f"Linked: {df.target}")
-                except Exception as e:
-                    console.print(f"[red]Failed to link {target}: {e}[/red]")
-                    self.logger.error(f"Link failed for {target}: {e}")
-                    self.progress_tracker.update_progress(f"Failed link: {df.target}")
-
-            except Exception as e:
-                console.print(
-                    f"[red]Error processing dotfile {df.source} -> {df.target}: {e}[/red]"
-                )
-                self.logger.error(
-                    f"Error processing dotfile {df.source} -> {df.target}: {e}"
-                )
-                self.progress_tracker.update_progress(f"Error: {df.target}")
-
-    def _run_hooks(self, hooks):
-        """Run hooks (pre/post actions for different stages)."""
-        if not hooks:
-            return
-
-        console.print(f"[bold]Running {len(hooks)} hook(s)...[/bold]")
-        self.logger.info(f"Running {len(hooks)} hook(s)")
-
-        for i, hook in enumerate(hooks, 1):
-            desc = hook.description or hook.command
-            console.print(f"[dim]Running hook {i}/{len(hooks)}: {desc}[/dim]")
-            self.logger.debug(f"Running hook {i}/{len(hooks)}: {desc}")
-
-            # Validate hook command before execution for security
-            if not self._is_safe_command(hook.command):
-                console.print(f"[red]✗ Unsafe command blocked: {hook.command}[/red]")
-                self.logger.error(f"Unsafe command blocked: {hook.command}")
-                continue
-
-            cwd = os.path.expanduser(hook.cwd) if hook.cwd else None
-
-            if self.dry_run:
-                console.print(
-                    f"[yellow]DRY RUN: Would execute hook: {hook.command}[/yellow]"
-                )
-                continue
-
-            try:
-                result = subprocess.run(
-                    hook.command,
-                    shell=True,
-                    check=True,
-                    cwd=cwd,
-                    capture_output=True,
-                    text=True,
-                )
-                console.print(f"[green]✓ Hook completed: {desc}[/green]")
-                if result.stdout:
-                    if self.verbose:
-                        console.print(f"[dim]Output: {result.stdout}[/dim]")
-                    else:
-                        console.print(
-                            f"[dim]Output: {result.stdout[:200]}...[/dim]"
-                            if len(result.stdout) > 200
-                            else f"[dim]Output: {result.stdout}[/dim]"
-                        )
-                self.logger.info(f"Hook completed: {desc}")
-            except subprocess.CalledProcessError as e:
-                console.print(f"[red]✗ Hook failed: {desc} ({e})[/red]")
-                if e.stderr:
-                    console.print(f"[red]Error: {e.stderr}[/red]")
-                self.logger.error(f"Hook failed: {desc} - {e}")
-
     def _install_system_packages_with_tracking(self, tracker: "OperationTracker"):
         packages = self.config.system.packages
         if packages:
@@ -568,7 +273,7 @@ class AutoRig:
                 self.logger.error(f"Package installation error: {e}")
                 raise
 
-    def _process_git_repos_with_tracking(self, tracker: "OperationTracker"):
+    async def _process_git_repos(self):
         repos = self.config.git.repositories
         if not repos:
             self.logger.debug("No git repositories to process")
@@ -577,75 +282,105 @@ class AutoRig:
         console.print(f"[bold]Processing {len(repos)} git repositories...[/bold]")
         self.logger.info(f"Processing {len(repos)} git repositories")
 
+        tasks = []
         for i, repo in enumerate(repos, 1):
-            try:
-                target_path = Path(os.path.expanduser(repo.path))
+            tasks.append(self._clone_or_update_repo(repo, i, len(repos)))
+        
+        await asyncio.gather(*tasks)
 
-                # Security check for path traversal
-                expanded_path = os.path.expanduser(repo.path)
-                if ".." in expanded_path or expanded_path.startswith("/tmp"):
-                    console.print(
-                        f"[red]Security error: Invalid repository path: {repo.path}[/red]"
-                    )
-                    self.logger.error(
-                        f"Security error: Invalid repository path: {repo.path}"
-                    )
+    async def _process_git_repos_with_tracking(self, tracker: "OperationTracker"):
+        repos = self.config.git.repositories
+        if not repos:
+            self.logger.debug("No git repositories to process")
+            return
+
+        console.print(f"[bold]Processing {len(repos)} git repositories...[/bold]")
+        self.logger.info(f"Processing {len(repos)} git repositories")
+
+        tasks = []
+        for i, repo in enumerate(repos, 1):
+            tasks.append(self._clone_or_update_repo(repo, i, len(repos), tracker))
+        
+        await asyncio.gather(*tasks)
+
+    async def _clone_or_update_repo(self, repo, index, total, tracker: Optional["OperationTracker"] = None):
+        try:
+            target_path = Path(os.path.expanduser(repo.path))
+
+            # Security check for path traversal
+            expanded_path = os.path.expanduser(repo.path)
+            if ".." in expanded_path or expanded_path.startswith("/tmp"):
+                console.print(
+                    f"[red]Security error: Invalid repository path: {repo.path}[/red]"
+                )
+                self.logger.error(
+                    f"Security error: Invalid repository path: {repo.path}"
+                )
+                if tracker:
                     tracker.record_change(
                         "security_error",
                         repo.path,
                         error="path_traversal",
                         url=repo.url,
                     )
-                    self.progress_tracker.update_progress(f"Security error: {repo.url}")
-                    continue
+                self.progress_tracker.update_progress(f"Security error: {repo.url}")
+                return
 
-                console.print(
-                    f"[dim]Processing repository {i}/{len(repos)}: {repo.url}[/dim]"
-                )
-                self.logger.debug(f"Processing repository {i}/{len(repos)}: {repo.url}")
+            console.print(
+                f"[dim]Processing repository {index}/{total}: {repo.url}[/dim]"
+            )
+            self.logger.debug(f"Processing repository {index}/{total}: {repo.url}")
 
-                if target_path.exists():
-                    if (target_path / ".git").exists():
+            if target_path.exists():
+                if (target_path / ".git").exists():
+                    console.print(
+                        f"[yellow]Path exists, updating:[/yellow] {repo.path}"
+                    )
+                    self.logger.info(f"Repository exists, updating: {repo.url}")
+                    if self.dry_run:
                         console.print(
-                            f"[yellow]Path exists, updating:[/yellow] {repo.path}"
+                            f"[yellow]DRY RUN: Would pull in {target_path}[/yellow]"
                         )
-                        self.logger.info(f"Repository exists, updating: {repo.url}")
-                        if self.dry_run:
-                            console.print(
-                                f"[yellow]DRY RUN: Would pull in {target_path}[/yellow]"
-                            )
+                        if tracker:
                             tracker.record_change(
                                 "would_pull_repo", repo.path, url=repo.url
                             )
-                            self.progress_tracker.update_progress(
-                                f"Dry run: update {repo.url}"
-                            )
-                            continue
+                        self.progress_tracker.update_progress(
+                            f"Dry run: update {repo.url}"
+                        )
+                        return
 
-                        try:
-                            result = subprocess.run(
-                                ["git", "-C", str(target_path), "pull"],
-                                check=True,
-                                capture_output=True,
-                                text=True,
-                            )
+                    try:
+                        process = await asyncio.create_subprocess_exec(
+                            "git", "-C", str(target_path), "pull",
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE
+                        )
+                        stdout, stderr = await process.communicate()
+                        
+                        if process.returncode == 0:
                             console.print(f"[green]Updated {repo.url}[/green]")
-                            if self.verbose and result.stdout:
-                                console.print(f"[dim]Git output: {result.stdout}[/dim]")
+                            if self.verbose and stdout:
+                                console.print(f"[dim]Git output: {stdout.decode()}[/dim]")
                             self.logger.info(f"Updated git repo: {repo.url}")
-                            tracker.record_change(
-                                "updated_repo", repo.path, url=repo.url
-                            )
+                            if tracker:
+                                tracker.record_change(
+                                    "updated_repo", repo.path, url=repo.url
+                                )
                             self.progress_tracker.update_progress(
                                 f"Updated: {repo.url}"
                             )
-                        except subprocess.CalledProcessError as e:
-                            console.print(
-                                f"[red]Failed to update {repo.url}: {e}[/red]"
-                            )
-                            if e.stderr:
-                                console.print(f"[red]Git error: {e.stderr}[/red]")
-                            self.logger.error(f"Failed to update {repo.url}: {e}")
+                        else:
+                            raise subprocess.CalledProcessError(process.returncode, ["git", "pull"], output=stdout.decode(), stderr=stderr.decode())
+
+                    except subprocess.CalledProcessError as e:
+                        console.print(
+                            f"[red]Failed to update {repo.url}: {e}[/red]"
+                        )
+                        if e.stderr:
+                            console.print(f"[red]Git error: {e.stderr}[/red]")
+                        self.logger.error(f"Failed to update {repo.url}: {e}")
+                        if tracker:
                             tracker.record_change(
                                 "updated_repo",
                                 repo.path,
@@ -653,61 +388,68 @@ class AutoRig:
                                 status="failed",
                                 error=str(e),
                             )
-                            self.progress_tracker.update_progress(f"Failed: {repo.url}")
-                    else:
-                        console.print(
-                            f"[yellow]Path exists but is not a git repository: {repo.path}[/yellow]"
-                        )
-                        self.logger.warning(
-                            f"Path exists but is not a git repository: {repo.path}"
-                        )
+                        self.progress_tracker.update_progress(f"Failed: {repo.url}")
+                else:
+                    console.print(
+                        f"[yellow]Path exists but is not a git repository: {repo.path}[/yellow]"
+                    )
+                    self.logger.warning(
+                        f"Path exists but is not a git repository: {repo.path}"
+                    )
+                    if tracker:
                         tracker.record_change(
                             "invalid_repo_path",
                             repo.path,
                             url=repo.url,
                             error="not_git_repo",
                         )
-                        self.progress_tracker.update_progress(
-                            f"Non-git path: {repo.path}"
-                        )
-                    continue
-
-                console.print(f"Cloning {repo.url} to {repo.path}...")
-                self.logger.info(f"Cloning repository: {repo.url} to {repo.path}")
-                if self.dry_run:
-                    console.print(f"[yellow]DRY RUN: Would clone {repo.url}[/yellow]")
-                    tracker.record_change("would_clone_repo", repo.path, url=repo.url)
-                    self.progress_tracker.update_progress(f"Dry run: clone {repo.url}")
-                    continue
-
-                # Ensure parent directory exists
-                target_path.parent.mkdir(parents=True, exist_ok=True)
-
-                try:
-                    result = subprocess.run(
-                        [
-                            "git",
-                            "clone",
-                            "-b",
-                            repo.branch or "main",
-                            repo.url,
-                            str(target_path),
-                        ],
-                        check=True,
-                        capture_output=True,
-                        text=True,
+                    self.progress_tracker.update_progress(
+                        f"Non-git path: {repo.path}"
                     )
+                return
+
+            console.print(f"Cloning {repo.url} to {repo.path}...")
+            self.logger.info(f"Cloning repository: {repo.url} to {repo.path}")
+            if self.dry_run:
+                console.print(f"[yellow]DRY RUN: Would clone {repo.url}[/yellow]")
+                if tracker:
+                    tracker.record_change("would_clone_repo", repo.path, url=repo.url)
+                self.progress_tracker.update_progress(f"Dry run: clone {repo.url}")
+                return
+
+            # Ensure parent directory exists
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+
+            try:
+                process = await asyncio.create_subprocess_exec(
+                    "git",
+                    "clone",
+                    "-b",
+                    repo.branch or "main",
+                    repo.url,
+                    str(target_path),
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                stdout, stderr = await process.communicate()
+                
+                if process.returncode == 0:
                     console.print(f"[green]Cloned {repo.url}[/green]")
-                    if self.verbose and result.stdout:
-                        console.print(f"[dim]Git output: {result.stdout}[/dim]")
+                    if self.verbose and stdout:
+                        console.print(f"[dim]Git output: {stdout.decode()}[/dim]")
                     self.logger.info(f"Cloned git repo: {repo.url}")
-                    tracker.record_change("git_cloned", repo.path, url=repo.url)
+                    if tracker:
+                        tracker.record_change("git_cloned", repo.path, url=repo.url)
                     self.progress_tracker.update_progress(f"Cloned: {repo.url}")
-                except subprocess.CalledProcessError as e:
-                    console.print(f"[red]Failed to clone {repo.url}: {e}[/red]")
-                    if e.stderr:
-                        console.print(f"[red]Git error: {e.stderr}[/red]")
-                    self.logger.error(f"Failed to clone {repo.url}: {e}")
+                else:
+                    raise subprocess.CalledProcessError(process.returncode, ["git", "clone"], output=stdout.decode(), stderr=stderr.decode())
+
+            except subprocess.CalledProcessError as e:
+                console.print(f"[red]Failed to clone {repo.url}: {e}[/red]")
+                if e.stderr:
+                    console.print(f"[red]Git error: {e.stderr}[/red]")
+                self.logger.error(f"Failed to clone {repo.url}: {e}")
+                if tracker:
                     tracker.record_change(
                         "git_cloned",
                         repo.path,
@@ -715,15 +457,16 @@ class AutoRig:
                         status="failed",
                         error=str(e),
                     )
-                    self.progress_tracker.update_progress(f"Failed: {repo.url}")
+                self.progress_tracker.update_progress(f"Failed: {repo.url}")
 
-            except Exception as e:
-                console.print(f"[red]Error processing repository {repo.url}: {e}[/red]")
-                self.logger.error(f"Error processing repository {repo.url}: {e}")
+        except Exception as e:
+            console.print(f"[red]Error processing repository {repo.url}: {e}[/red]")
+            self.logger.error(f"Error processing repository {repo.url}: {e}")
+            if tracker:
                 tracker.record_change(
                     "process_repo_error", repo.path, url=repo.url, error=str(e)
                 )
-                self.progress_tracker.update_progress(f"Error: {repo.url}")
+            self.progress_tracker.update_progress(f"Error: {repo.url}")
 
     def _link_dotfiles_with_tracking(self, tracker: "OperationTracker"):
         dotfiles = self.config.dotfiles
@@ -912,6 +655,59 @@ class AutoRig:
                 )
                 self.progress_tracker.update_progress(f"Error: {df.target}")
 
+    def _run_hooks(self, hooks):
+        """Run hooks (pre/post actions for different stages)."""
+        if not hooks:
+            return
+
+        console.print(f"[bold]Running {len(hooks)} hook(s)...[/bold]")
+        self.logger.info(f"Running {len(hooks)} hook(s)")
+
+        for i, hook in enumerate(hooks, 1):
+            desc = hook.description or hook.command
+            console.print(f"[dim]Running hook {i}/{len(hooks)}: {desc}[/dim]")
+            self.logger.debug(f"Running hook {i}/{len(hooks)}: {desc}")
+
+            # Validate hook command before execution for security
+            if not self._is_safe_command(hook.command):
+                console.print(f"[red]✗ Unsafe command blocked: {hook.command}[/red]")
+                self.logger.error(f"Unsafe command blocked: {hook.command}")
+                continue
+
+            cwd = os.path.expanduser(hook.cwd) if hook.cwd else None
+
+            if self.dry_run:
+                console.print(
+                    f"[yellow]DRY RUN: Would execute hook: {hook.command}[/yellow]"
+                )
+                continue
+
+            try:
+                result = subprocess.run(
+                    hook.command,
+                    shell=True,
+                    check=True,
+                    cwd=cwd,
+                    capture_output=True,
+                    text=True,
+                )
+                console.print(f"[green]✓ Hook completed: {desc}[/green]")
+                if result.stdout:
+                    if self.verbose:
+                        console.print(f"[dim]Output: {result.stdout}[/dim]")
+                    else:
+                        console.print(
+                            f"[dim]Output: {result.stdout[:200]}...[/dim]"
+                            if len(result.stdout) > 200
+                            else f"[dim]Output: {result.stdout}[/dim]"
+                        )
+                self.logger.info(f"Hook completed: {desc}")
+            except subprocess.CalledProcessError as e:
+                console.print(f"[red]✗ Hook failed: {desc} ({e})[/red]")
+                if e.stderr:
+                    console.print(f"[red]Error: {e.stderr}[/red]")
+                self.logger.error(f"Hook failed: {desc} - {e}")
+
     def _run_scripts_with_tracking(self, tracker: "OperationTracker"):
         scripts = self.config.scripts
         if not scripts:
@@ -1058,7 +854,7 @@ class AutoRig:
             r"\|\|",  # command chaining
             r"&&",  # command chaining
             r";",  # command separation
-            r"\$\(\(",  # arithmetic expansion
+            r"\$\(\( ",  # arithmetic expansion
             r"`",  # command substitution
             r"\$\(.*\)",  # command substitution
             r"eval\s",  # eval command
@@ -1268,7 +1064,9 @@ class AutoRig:
                         self.rigger.config = RigConfig.from_yaml(
                             self.rigger.config_path
                         )
-                        self.rigger.apply()
+                        # We need to run the async apply here, but watch is sync.
+                        # This is a bit tricky. For now, we wrap it.
+                        asyncio.run(self.rigger.apply())
                     except Exception as e:
                         console.print(f"[red]Error applying changes:[/red] {e}")
 
@@ -1325,41 +1123,56 @@ scripts:
                 "[blue]Configuration includes packages, repositories, dotfiles, and scripts.[/blue]"
             )
 
-    def sync_repos(self):
+    async def sync_repos(self):
         repos = self.config.git.repositories
         if not repos:
             console.print("No repositories defined to sync.")
             return
 
         console.print(f"[bold]Syncing {len(repos)} git repositories...[/bold]")
-        for repo in repos:
+        
+        async def _sync_one_repo(repo):
             target_path = Path(os.path.expanduser(repo.path))
             if target_path.exists() and (target_path / ".git").exists():
                 console.print(f"Syncing {repo.path}...")
                 if self.dry_run:
                     console.print(f"[yellow]DRY RUN: Would push {target_path}[/yellow]")
-                    continue
+                    return
 
                 try:
                     # Check for uncommitted changes just to inform
-                    status = subprocess.run(
-                        ["git", "-C", str(target_path), "status", "--porcelain"],
-                        capture_output=True,
-                        text=True,
+                    status_proc = await asyncio.create_subprocess_exec(
+                        "git", "-C", str(target_path), "status", "--porcelain",
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
                     )
-                    if status.stdout.strip():
+                    stdout, _ = await status_proc.communicate()
+                    
+                    if stdout.strip():
                         console.print(
                             f"[yellow]Warning: {repo.path} has uncommitted changes.[/yellow]"
                         )
 
-                    subprocess.run(["git", "-C", str(target_path), "push"], check=True)
-                    console.print(f"[green]Pushed {repo.path}[/green]")
-                    self.logger.info(f"Pushed git repo: {repo.path}")
-                except subprocess.CalledProcessError as e:
-                    console.print(f"[red]Failed to push {repo.path}: {e}[/red]")
-                    self.logger.error(f"Failed to push {repo.path}: {e}")
+                    push_proc = await asyncio.create_subprocess_exec(
+                        "git", "-C", str(target_path), "push",
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    _, stderr = await push_proc.communicate()
+                    
+                    if push_proc.returncode == 0:
+                        console.print(f"[green]Pushed {repo.path}[/green]")
+                        self.logger.info(f"Pushed git repo: {repo.path}")
+                    else:
+                        console.print(f"[red]Failed to push {repo.path}: {stderr.decode()}[/red]")
+                        self.logger.error(f"Failed to push {repo.path}: {stderr.decode()}")
+                except Exception as e:
+                    console.print(f"[red]Error syncing {repo.path}: {e}[/red]")
+                    self.logger.error(f"Error syncing {repo.path}: {e}")
             else:
                 console.print(f"[yellow]Skipping {repo.path}: Not a git repo[/yellow]")
+
+        await asyncio.gather(*[_sync_one_repo(repo) for repo in repos])
 
     def run_plugins(self, plugin_names: List[str]):
         """Run specific plugins."""
