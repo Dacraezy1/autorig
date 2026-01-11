@@ -266,14 +266,14 @@ class TestCLIHelpAndDocumentation:
     
     def test_main_help(self):
         """Test main help output."""
-        result = self.runner.invoke(app, ["--help"])
+        result = self.runner.invoke(app, ["--help"], env={"NO_COLOR": "1"})
         assert result.exit_code == 0
         assert "AutoRig" in result.stdout
         assert "development environment" in result.stdout.lower()
     
     def test_apply_help(self):
         """Test apply command help."""
-        result = self.runner.invoke(app, ["apply", "--help"])
+        result = self.runner.invoke(app, ["apply", "--help"], env={"NO_COLOR": "1"})
         assert result.exit_code == 0
         assert "Apply a rig configuration" in result.stdout
         assert "dry-run" in result.stdout
@@ -282,13 +282,13 @@ class TestCLIHelpAndDocumentation:
     
     def test_template_help(self):
         """Test template command help."""
-        result = self.runner.invoke(app, ["template", "--help"])
+        result = self.runner.invoke(app, ["template", "--help"], env={"NO_COLOR": "1"})
         assert result.exit_code == 0
         assert "Manage configuration templates" in result.stdout
     
     def test_bootstrap_help(self):
         """Test bootstrap command help."""
-        result = self.runner.invoke(app, ["bootstrap", "--help"])
+        result = self.runner.invoke(app, ["bootstrap", "--help"], env={"NO_COLOR": "1"})
         assert result.exit_code == 0
         assert "template" in result.stdout
         assert "path" in result.stdout

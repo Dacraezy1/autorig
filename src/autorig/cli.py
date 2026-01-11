@@ -815,7 +815,6 @@ def remote(
     except Exception as e:
         console.print(ErrorHandler.format_error(e, verbose))
         raise typer.Exit(code=1)
-        raise typer.Exit(code=1)
 
 
 
