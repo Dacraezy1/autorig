@@ -8,10 +8,17 @@ class SystemInstaller(ABC):
     def install(self, packages: List[str]) -> bool:
         pass
 
+    @abstractmethod
+    def uninstall(self, packages: List[str]) -> bool:
+        pass
+
 
 class NoOpInstaller(SystemInstaller):
     def install(self, packages: List[str]) -> bool:
         # Fallback for unsupported OS
+        return True
+
+    def uninstall(self, packages: List[str]) -> bool:
         return True
 
 

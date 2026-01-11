@@ -39,3 +39,25 @@ class WindowsInstaller(SystemInstaller):
                 continue
 
         return success
+
+    def uninstall(self, packages: List[str]) -> bool:
+        if shutil.which("winget"):
+            cmd = ["winget", "uninstall", "--silent"]
+        elif shutil.which("choco"):
+            cmd = ["choco", "uninstall", "-y"]
+        elif shutil.which("scoop"):
+            cmd = ["scoop", "uninstall"]
+        else:
+            return False
+
+        success = True
+        for package in packages:
+            try:
+                subprocess.run(
+                    cmd + [package], check=True, capture_output=True, text=True
+                )
+            except subprocess.CalledProcessError:
+                success = False
+                continue
+
+        return success

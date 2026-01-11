@@ -112,36 +112,9 @@ class Script(BaseModel):
     @field_validator("command")
     @classmethod
     def validate_command(cls, v):
-        # Enhanced command validation to prevent dangerous operations
-        dangerous_patterns = [
-            r"\|\|",  # command chaining
-            r"&&",  # command chaining
-            r";",  # command separation
-            r"\$\(\(",  # arithmetic expansion
-            r"`",  # command substitution
-            r"\$\{.*\}",  # environment variable injection
-            r"\$\(.*\)",  # command substitution
-            r"eval\s",  # eval command
-            r"exec\s",  # exec command
-            r"source\s",  # source command
-            r"bash\s+-c",  # bash command execution
-            r"sh\s+-c",  # sh command execution
-            r"python.*-c",  # python command execution
-            r"perl.*-e",  # perl command execution
-            r"ruby.*-e",  # ruby command execution
-        ]
-
-        for pattern in dangerous_patterns:
-            if re.search(pattern, v, re.IGNORECASE):
-                raise ValueError(f"Dangerous command pattern detected: {pattern}")
-
-        # Additional validation: check for absolute paths that might be dangerous
-        dangerous_paths = ["/etc", "/root", "/boot", "/sys", "/proc"]
-        parts = v.split()
-        for part in parts:
-            if any(part.startswith(path) for path in dangerous_paths):
-                raise ValueError(f"Dangerous path in command: {part}")
-
+        # Allow any command for system configuration
+        if not v or not v.strip():
+            raise ValueError("Command cannot be empty")
         return v.strip()
 
     @field_validator("cwd", "when")

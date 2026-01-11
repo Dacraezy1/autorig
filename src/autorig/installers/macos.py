@@ -21,3 +21,17 @@ class MacOSInstaller(SystemInstaller):
             return True
         except subprocess.CalledProcessError:
             return False
+
+    def uninstall(self, packages: List[str]) -> bool:
+        if shutil.which("brew"):
+            cmd = ["brew", "uninstall"]
+        elif shutil.which("port"):
+            cmd = ["sudo", "port", "uninstall"]
+        else:
+            return False
+
+        try:
+            subprocess.run(cmd + packages, check=True)
+            return True
+        except subprocess.CalledProcessError:
+            return False

@@ -361,7 +361,10 @@ def load_profile_config(
             except yaml.YAMLError as e:
                 raise ValueError(f"Invalid YAML in configuration file: {e}")
 
-            # Apply profile-specific sections if they exist
+            # First merge the base configuration from this file
+            final_config = _deep_merge(final_config, config_data)
+
+            # Then apply profile-specific sections if they exist
             if (
                 profile
                 and "profiles" in config_data
@@ -370,9 +373,6 @@ def load_profile_config(
                 profile_config = config_data["profiles"][profile]
                 # Merge profile config with base config
                 final_config = _deep_merge(final_config, profile_config)
-            else:
-                # Regular config merge
-                final_config = _deep_merge(final_config, config_data)
 
     return final_config
 

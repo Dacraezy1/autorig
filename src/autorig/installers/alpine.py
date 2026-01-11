@@ -17,3 +17,15 @@ class AlpineInstaller(SystemInstaller):
             return True
         except subprocess.CalledProcessError:
             return False
+
+    def uninstall(self, packages: List[str]) -> bool:
+        if not shutil.which("apk"):
+            return False
+
+        cmd = ["sudo", "apk", "del"]
+
+        try:
+            subprocess.run(cmd + packages, check=True)
+            return True
+        except subprocess.CalledProcessError:
+            return False

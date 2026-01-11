@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import shlex
 import difflib
 import re
 import asyncio
@@ -668,6 +669,51 @@ class AutoRig:
                 )
                 self.progress_tracker.update_progress(f"Error: {df.target}")
 
+    def _run_command_safely(
+        self, command: str, cwd: Optional[str] = None, capture_output: bool = True
+    ):
+        """
+        Execute a command safely, avoiding shell=True when possible.
+        """
+        # Check for shell features that require shell=True
+        shell_metachars = {"|", ">", "<", "&", ";", "$"}
+        needs_shell = any(char in command for char in shell_metachars)
+
+        if needs_shell:
+            self.logger.debug(f"Command requires shell execution: {command}")
+            return subprocess.run(
+                command,
+                shell=True,
+                check=True,
+                cwd=cwd,
+                capture_output=capture_output,
+                text=True,
+            )
+        else:
+            try:
+                args = shlex.split(command)
+                return subprocess.run(
+                    args,
+                    shell=False,
+                    check=True,
+                    cwd=cwd,
+                    capture_output=capture_output,
+                    text=True,
+                )
+            except ValueError as e:
+                # Fallback if shlex fails to split (e.g. unbalanced quotes)
+                self.logger.warning(
+                    f"shlex split failed, falling back to shell=True: {e}"
+                )
+                return subprocess.run(
+                    command,
+                    shell=True,
+                    check=True,
+                    cwd=cwd,
+                    capture_output=capture_output,
+                    text=True,
+                )
+
     def _run_hooks(self, hooks):
         """Run hooks (pre/post actions for different stages)."""
         if not hooks:
@@ -696,14 +742,7 @@ class AutoRig:
                 continue
 
             try:
-                result = subprocess.run(
-                    hook.command,
-                    shell=True,
-                    check=True,
-                    cwd=cwd,
-                    capture_output=True,
-                    text=True,
-                )
+                result = self._run_command_safely(hook.command, cwd=cwd)
                 console.print(f"[green]✓ Hook completed: {desc}[/green]")
                 if result.stdout:
                     if self.verbose:
@@ -758,14 +797,7 @@ class AutoRig:
                 continue
 
             try:
-                result = subprocess.run(
-                    script.command,
-                    shell=True,
-                    check=True,
-                    cwd=cwd,
-                    capture_output=True,
-                    text=True,
-                )
+                result = self._run_command_safely(script.command, cwd=cwd)
                 console.print(f"[green]✓ Completed: {desc}[/green]")
                 if result.stdout:
                     if self.verbose:
@@ -831,14 +863,7 @@ class AutoRig:
                 continue
 
             try:
-                result = subprocess.run(
-                    script.command,
-                    shell=True,
-                    check=True,
-                    cwd=cwd,
-                    capture_output=True,
-                    text=True,
-                )
+                result = self._run_command_safely(script.command, cwd=cwd)
                 console.print(f"[green]✓ Completed: {desc}[/green]")
                 if result.stdout:
                     if self.verbose:

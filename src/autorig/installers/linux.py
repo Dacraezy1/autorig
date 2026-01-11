@@ -32,6 +32,33 @@ class LinuxInstaller(SystemInstaller):
         except subprocess.CalledProcessError:
             return False
 
+    def uninstall(self, packages: List[str]) -> bool:
+        manager = self._get_manager()
+        if not manager:
+            return False
+
+        cmd = []
+        if manager == "apt-get":
+            cmd = ["sudo", "apt-get", "remove", "-y"]
+        elif manager == "dnf":
+            cmd = ["sudo", "dnf", "remove", "-y"]
+        elif manager == "yum":
+            cmd = ["sudo", "yum", "remove", "-y"]
+        elif manager == "zypper":
+            cmd = ["sudo", "zypper", "remove", "-y"]
+        elif manager == "pacman":
+            cmd = ["sudo", "pacman", "-Rns", "--noconfirm"]
+        elif manager == "xbps":
+            cmd = ["sudo", "xbps-remove", "-Ry"]
+        elif manager == "apk":
+            cmd = ["sudo", "apk", "del"]
+
+        try:
+            subprocess.run(cmd + packages, check=True)
+            return True
+        except subprocess.CalledProcessError:
+            return False
+
     def _get_manager(self):
         for mgr in ["apt-get", "dnf", "yum", "zypper", "pacman", "xbps", "apk"]:
             if shutil.which(mgr):

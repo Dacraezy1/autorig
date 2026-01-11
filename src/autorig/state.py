@@ -120,9 +120,11 @@ class StateManager:
                         backup_path.rename(target_path)
                         print(f"Restored file from backup: {path}")
             elif action == "installed_package":
-                # This would need to call the installer to remove the package
-                # For now, just log the action
-                print(f"Would rollback package installation: {path}")
+                from .installers.base import get_system_installer
+
+                installer = get_system_installer()
+                print(f"Rolling back package installation: {path}")
+                installer.uninstall([path])
             elif action == "git_cloned":
                 repo_path = Path(os.path.expanduser(path))
                 if repo_path.exists():

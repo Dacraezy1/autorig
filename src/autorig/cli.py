@@ -1,7 +1,19 @@
-from typing import List
+from typing import List, Optional
+from pathlib import Path
+import os
 import typer
 from rich.console import Console
+from rich.panel import Panel
 from .core import AutoRig
+from .cli_utils import (
+    ErrorHandler, 
+    EnhancedProgressTracker, 
+    InfoDisplay, 
+    confirm_action,
+    validate_config_exists,
+    format_duration,
+    CommandTimer
+)
 
 app = typer.Typer(
     help="""
@@ -11,9 +23,113 @@ app = typer.Typer(
     managing git repositories, linking dotfiles, and running custom scripts.
     """,
     context_settings={"help_option_names": ["-h", "--help"]},
+    add_completion=True,
 )
 
 console = Console()
+
+
+@app.command(hidden=True)
+def completion(
+    shell: str = typer.Argument(..., help="Shell type (bash, zsh, fish)"),
+    install: bool = typer.Option(False, "--install", help="Install completion script"),
+):
+    """Generate shell completion script."""
+    import platform
+    
+    if shell not in ["bash", "zsh", "fish"]:
+        console.print(f"[red]Unsupported shell: {shell}[/red]")
+        console.print("Supported shells: bash, zsh, fish")
+        raise typer.Exit(code=1)
+    
+    try:
+        # Generate completion script using typer's built-in functionality
+        import os
+        script_source = f"""
+import typer
+from autorig.cli import app
+
+typer.main.get_completion(app, {shell!r})
+"""
+        
+        if install:
+            # Install based on shell and platform
+            home_dir = Path.home()
+            system = platform.system().lower()
+            
+            completion_file = None
+            
+            if shell == "bash":
+                if system == "linux":
+                    completion_file = home_dir / ".local" / "share" / "bash-completion" / "completions" / "autorig"
+                else:  # macOS
+                    completion_file = home_dir / ".bash_completion.d" / "autorig"
+                    
+            elif shell == "zsh":
+                completion_file = home_dir / ".zsh" / "_autorig"
+                
+            elif shell == "fish":
+                completion_file = home_dir / ".config" / "fish" / "completions" / "autorig.fish"
+            
+            if completion_file is None:
+                console.print(f"[red]Unsupported platform for {shell} completion[/red]")
+                raise typer.Exit(code=1)
+            
+            # Generate the completion script
+            import subprocess
+            result = subprocess.run(
+                ["python3", "-c", script_source],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            
+            # Create directory if needed
+            completion_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Write completion script
+            completion_file.write_text(result.stdout)
+            console.print(f"[green]✅ Completion installed to: {completion_file}[/green]")
+            console.print(f"[yellow]💡 Restart your shell or run: source {completion_file}[/yellow]")
+            
+        else:
+            # Generate and display the script
+            import subprocess
+            result = subprocess.run(
+                ["python3", "-c", script_source],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            console.print(result.stdout)
+            
+    except Exception as e:
+        console.print(f"[red]Error generating completion: {e}[/red]")
+        console.print(f"[yellow]💡 Try: eval \"$(autorig completion {shell})\"[/yellow]")
+        raise typer.Exit(code=1)
+
+
+def show_completion_installation_help():
+    """Show help for installing shell completion."""
+    console.print(Panel.fit(
+        """
+        [bold blue]Shell Completion Installation[/bold blue]
+        
+        [bold]Bash:[/bold]
+          autorig completion bash --install
+        
+        [bold]Zsh:[/bold]
+          autorig completion zsh --install
+        
+        [bold]Fish:[/bold]
+          autorig completion fish --install
+        
+        Or generate the script and add it manually:
+          autorig completion <shell> >> ~/.<shell>_completion.d/autorig
+        """,
+        title="💡 Tip",
+        border_style="blue"
+    ))
 
 
 @app.command(
@@ -51,17 +167,48 @@ def apply(
         from .remote import resolve_config_path
         import asyncio
 
-        local_config_path = resolve_config_path(config)
-        rig = AutoRig(
-            local_config_path,
-            dry_run=dry_run,
-            verbose=verbose,
-            force=force,
-            profile=profile,
-        )
-        asyncio.run(rig.apply())
+        # Validate configuration exists
+        config_path = validate_config_exists(config)
+        
+        # Show configuration preview
+        if verbose:
+            from .config import RigConfig
+            config_data = RigConfig.from_yaml(str(config_path))
+            InfoDisplay.show_configuration_preview(config_data.model_dump())
+        
+        # Confirm destructive operations unless in dry-run mode
+        if not dry_run and not force:
+            if not confirm_action(
+                "This will modify your system. Do you want to continue?",
+                default=False
+            ):
+                console.print("[yellow]Operation cancelled.[/yellow]")
+                raise typer.Exit(code=0)
+        
+        with CommandTimer("Configuration application"):
+            local_config_path = resolve_config_path(config)
+            rig = AutoRig(
+                local_config_path,
+                dry_run=dry_run,
+                verbose=verbose,
+                force=force,
+                profile=profile,
+            )
+            asyncio.run(rig.apply())
+            
+        if dry_run:
+            console.print(ErrorHandler.show_success(
+                "Dry run completed successfully",
+                "No changes were made to your system"
+            ))
+        else:
+            console.print(ErrorHandler.show_success(
+                "Configuration applied successfully",
+                "Your development environment has been updated"
+            ))
+            
     except Exception as e:
-        console.print(f"[bold red]Error:[/bold red] {e}")
+        console.print(ErrorHandler.format_error(e, verbose))
         raise typer.Exit(code=1)
 
 
@@ -86,41 +233,80 @@ def clean(
     try:
         from .remote import resolve_config_path
 
+        config_path = validate_config_exists(config)
         local_config_path = resolve_config_path(config)
+        
+        if not dry_run and not confirm_action(
+            "This will remove symlinks created by the configuration. Continue?",
+            default=False
+        ):
+            console.print("[yellow]Operation cancelled.[/yellow]")
+            raise typer.Exit(code=0)
+        
         rig = AutoRig(
             local_config_path, dry_run=dry_run, verbose=verbose, profile=profile
         )
-        rig.clean()
+        
+        with CommandTimer("Cleanup operation"):
+            rig.clean()
+            
+        console.print(ErrorHandler.show_success(
+            "Cleanup completed successfully",
+            "Symlinks have been removed"
+        ))
+        
     except Exception as e:
-        console.print(f"[bold red]Error:[/bold red] {e}")
+        console.print(ErrorHandler.format_error(e, verbose))
         raise typer.Exit(code=1)
 
 
 @app.command(
-    help="Validate a rig configuration file.", short_help="Validate configuration"
+    help="Generate a default rig.yaml configuration file.",
+    short_help="Generate default config",
 )
-def validate(
-    config: str = typer.Argument(..., help="Path to rig.yaml config file"),
+def bootstrap(
+    path: str = typer.Option(
+        "rig.yaml", "--path", "-p", help="Path to create configuration file"
+    ),
+    template: str = typer.Option(
+        None, "--template", "-t", help="Use a predefined template (python, web, golang, rust, data-science, minimal)"
+    ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable verbose output"
     ),
-    profile: str = typer.Option(
-        None, "--profile", "-p", help="Use a specific profile configuration"
-    ),
 ):
     """
-    Validate a rig configuration file.
+    Generate a default rig.yaml configuration file.
+    
+    This creates a well-documented configuration file with examples
+    that you can customize for your development environment.
+    
+    Use --template to start from a predefined template for specific development setups.
     """
     try:
-        from .remote import resolve_config_path
-
-        local_config_path = resolve_config_path(config)
-        AutoRig(local_config_path, verbose=verbose, profile=profile)
-        console.print(
-            f"[bold green]Configuration file '{config}' is valid.[/bold green]"
-        )
+        if template:
+            # Use template system
+            from .templates import TemplateManager
+            
+            if verbose:
+                console.print(f"[blue]Using template: {template}[/blue]")
+            
+            TemplateManager.create_config_from_template(template, path)
+        else:
+            # Use original bootstrap
+            AutoRig.create_default_config(path, verbose)
+            console.print(
+                f"[bold green]✅[/bold green] Configuration file created: [cyan]{path}[/cyan]"
+            )
+            console.print(
+                "[dim]💡 Use 'autorig template list' to see available templates[/dim]"
+            )
+            console.print(
+                "[dim]Edit the file to customize your development environment setup.[/dim]"
+            )
+            
     except Exception as e:
-        console.print(f"[bold red]Error validating configuration:[/bold red] {e}")
+        console.print(ErrorHandler.format_error(e, verbose))
         raise typer.Exit(code=1)
 
 
@@ -285,27 +471,7 @@ def watch(
         raise typer.Exit(code=1)
 
 
-@app.command(
-    help="Generate a default rig.yaml configuration file.",
-    short_help="Create default config",
-)
-def bootstrap(
-    path: str = typer.Argument("rig.yaml", help="Path to generate the config file"),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Enable verbose output"
-    ),
-    profile: str = typer.Option(
-        None, "--profile", "-p", help="Use a specific profile configuration"
-    ),
-):
-    """
-    Generate a default rig.yaml configuration file.
-    """
-    try:
-        AutoRig.create_default_config(path, verbose=verbose)
-    except Exception as e:
-        console.print(f"[bold red]Error bootstrapping:[/bold red] {e}")
-        raise typer.Exit(code=1)
+
 
 
 @app.command(
@@ -341,36 +507,85 @@ def sync(
         raise typer.Exit(code=1)
 
 
-@app.command(
-    help="Run specific plugins defined in the configuration.",
-    short_help="Run specific plugins",
-)
-def run_plugins(
-    config: str = typer.Argument(..., help="Path to rig.yaml config file"),
-    plugins: List[str] = typer.Argument(..., help="Names of plugins to run"),
-    dry_run: bool = typer.Option(
-        False, "--dry-run", "-n", help="Simulate actions without making changes"
+# Template commands
+template_app = typer.Typer(help="Manage configuration templates", name="template")
+app.add_typer(template_app)
+
+
+@template_app.command("list", help="List available configuration templates")
+def list_templates():
+    """List all available configuration templates."""
+    from .templates import TemplateManager
+    TemplateManager.list_templates()
+
+
+@template_app.command("show", help="Show details of a specific template")
+def show_template(
+    name: str = typer.Argument(..., help="Template name to preview")
+):
+    """Show detailed information about a specific template."""
+    from .templates import TemplateManager
+    TemplateManager.show_template_preview(name)
+
+
+@template_app.command("create", help="Create configuration from template")
+def create_template_config(
+    name: str = typer.Argument(..., help="Template name to use"),
+    output: str = typer.Option(
+        "rig.yaml", "--output", "-o", help="Output configuration file path"
     ),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Enable verbose output"
+    email: str = typer.Option(
+        None, "--email", "-e", help="Email address (overrides template default)"
+    ),
+    editor: str = typer.Option(
+        None, "--editor", help="Editor preference (overrides template default)"
+    ),
+):
+    """Create a configuration file from a template."""
+    from .templates import TemplateManager
+    
+    variables = {}
+    if email:
+        variables["email"] = email
+    if editor:
+        variables["editor"] = editor
+    
+    TemplateManager.create_config_from_template(name, output, variables)
+
+
+@app.command(
+    help="Generate VS Code DevContainer configuration.", short_help="Export DevContainer"
+)
+def export(
+    format: str = typer.Argument(
+        "devcontainer", help="Export format (currently only devcontainer supported)"
+    ),
+    config: str = typer.Option(
+        "rig.yaml", "--config", "-c", help="Path to rig.yaml config file"
+    ),
+    output: str = typer.Option(
+        ".", "--output", "-o", help="Output directory for exported files"
     ),
     profile: str = typer.Option(
         None, "--profile", "-p", help="Use a specific profile configuration"
     ),
 ):
-    """
-    Run specific plugins defined in the configuration.
-    """
+    """Export configuration to different formats."""
     try:
         from .remote import resolve_config_path
+        from .config import RigConfig
+        from .exporters.devcontainer import DevContainerExporter
 
         local_config_path = resolve_config_path(config)
-        rig = AutoRig(
-            local_config_path, dry_run=dry_run, verbose=verbose, profile=profile
+        exporter = DevContainerExporter(
+            RigConfig.from_yaml(local_config_path, profile),
+            local_config_path,
+            output,
         )
-        rig.run_plugins(plugins)
+        exporter.export()
     except Exception as e:
-        console.print(f"[bold red]Error running plugins:[/bold red] {e}")
+        from .cli_utils import ErrorHandler
+        console.print(ErrorHandler.format_error(e))
         raise typer.Exit(code=1)
 
 
@@ -505,6 +720,7 @@ def remote(
     """
     Download and work with remote configurations (GitHub, GitLab, HTTP).
     """
+    local_path = None
     try:
         from .remote import RemoteConfigManager
         import os
@@ -550,8 +766,15 @@ def remote(
                 local_path = RemoteConfigManager.fetch_from_gitlab(
                     owner, repo, path, ref
                 )
+            else:
+                raise ValueError(
+                    "Invalid GitLab URL format. Use: gitlab:owner/repo/path/to/file[@ref]"
+                )
         else:
             local_path = RemoteConfigManager.fetch_remote_config(url)
+            
+        if not local_path:
+            raise ValueError(f"Failed to fetch remote configuration from: {url}")
 
         # Execute the requested command
         from .core import AutoRig
@@ -583,61 +806,19 @@ def remote(
 
         # Clean up temporary file after successful operation
         try:
-            os.remove(local_path)
-            console.print("[green]Cleaned up temporary configuration file[/green]")
+            if local_path and os.path.exists(local_path):
+                os.remove(local_path)
+                console.print("[green]Cleaned up temporary configuration file[/green]")
         except OSError:
             pass  # Don't fail if cleanup fails
 
     except Exception as e:
-        console.print(f"[bold red]Error with remote config:[/bold red] {e}")
+        console.print(ErrorHandler.format_error(e, verbose))
+        raise typer.Exit(code=1)
         raise typer.Exit(code=1)
 
 
-@app.command(
-    help="Export the configuration to other formats (e.g., DevContainer).",
-    short_help="Export configuration",
-)
-def export(
-    format: str = typer.Argument(
-        ..., help="Format to export to (currently supported: devcontainer)"
-    ),
-    config: str = typer.Option(
-        "rig.yaml", "--config", "-c", help="Path to rig.yaml config file"
-    ),
-    output: str = typer.Option(
-        ".", "--output", "-o", help="Output directory for the export"
-    ),
-    profile: str = typer.Option(
-        None, "--profile", "-p", help="Use a specific profile configuration"
-    ),
-):
-    """
-    Export the configuration to other formats.
-    """
-    try:
-        from .config import RigConfig
-        from .exporters.devcontainer import DevContainerExporter
-        from .remote import resolve_config_path
 
-        if format.lower() != "devcontainer":
-            console.print(
-                f"[red]Unsupported format: {format}. Supported: devcontainer[/red]"
-            )
-            raise typer.Exit(code=1)
-
-        local_config_path = resolve_config_path(config)
-        rig_config = RigConfig.from_yaml(local_config_path, profile)
-
-        if format.lower() == "devcontainer":
-            exporter = DevContainerExporter(rig_config, local_config_path, output)
-            exporter.export()
-            console.print(
-                f"[bold green]Successfully exported DevContainer to {output}/.devcontainer[/bold green]"
-            )
-
-    except Exception as e:
-        console.print(f"[bold red]Error exporting:[/bold red] {e}")
-        raise typer.Exit(code=1)
 
 
 def main():

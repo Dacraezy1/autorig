@@ -1,4 +1,6 @@
 import abc
+import importlib
+import importlib.metadata
 from typing import List
 from .config import RigConfig
 
@@ -38,10 +40,31 @@ class PluginManager:
         """Register a plugin."""
         self.plugins.append(plugin)
 
+    def load_entry_points(self, group: str = "autorig.plugins") -> None:
+        """Load plugins registered via entry points."""
+        try:
+            # Python 3.10+
+            entry_points = importlib.metadata.entry_points(group=group)
+        except TypeError:
+            # Fallback for older Python versions
+            entry_points = importlib.metadata.entry_points().get(group, [])
+
+        for entry_point in entry_points:
+            try:
+                plugin_class = entry_point.load()
+                if (
+                    isinstance(plugin_class, type)
+                    and issubclass(plugin_class, Plugin)
+                    and plugin_class != Plugin
+                ):
+                    self.register(plugin_class())
+            except Exception as e:
+                print(f"Failed to load plugin {entry_point.name}: {e}")
+
     def register_from_module(self, module_name: str) -> None:
         """Dynamically load and register plugins from a module."""
         try:
-            module = __import__(module_name, fromlist=[""])
+            module = importlib.import_module(module_name)
             for attr_name in dir(module):
                 attr = getattr(module, attr_name)
                 if (
