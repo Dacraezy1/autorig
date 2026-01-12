@@ -6,17 +6,14 @@ import yaml
 import re
 from pathlib import Path
 from unittest.mock import patch, Mock
-from click.testing import CliRunner
 from typer.testing import CliRunner
 from autorig.cli import app
+from autorig.templates import TemplateManager
 
 
 def strip_ansi(text):
     ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
     return ansi_escape.sub("", text)
-
-
-from autorig.templates import TemplateManager
 
 
 class TestEnhancedCLI:
@@ -95,6 +92,7 @@ class TestEnhancedCLI:
                 result = self.runner.invoke(
                     app, ["bootstrap", "--path", str(config_path)]
                 )
+                assert result.exit_code == 0
 
             mock_bootstrap.assert_called_once()
 
@@ -123,6 +121,7 @@ class TestEnhancedCLI:
             mock_run.return_value = Mock(stdout="# completion script", returncode=0)
 
             result = self.runner.invoke(app, ["completion", "bash"])
+            assert result.exit_code == 0
             # Should not fail for supported shell
 
     def test_template_commands(self):
@@ -159,6 +158,7 @@ class TestEnhancedCLI:
                     "test@example.com",
                 ],
             )
+            assert result.exit_code == 0
 
         assert config_path.exists()
 

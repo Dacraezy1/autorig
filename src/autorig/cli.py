@@ -249,7 +249,7 @@ def clean(
     try:
         from .remote import resolve_config_path
 
-        config_path = validate_config_exists(config)
+        validate_config_exists(config)
         local_config_path = resolve_config_path(config)
 
         if not dry_run and not confirm_action(
