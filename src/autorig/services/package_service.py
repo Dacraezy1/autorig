@@ -7,20 +7,23 @@ from logging import Logger
 
 console = Console()
 
+
 class PackageService:
     def __init__(
         self,
         installer: SystemInstaller,
         logger: Logger,
         progress_tracker: ProgressTracker,
-        dry_run: bool = False
+        dry_run: bool = False,
     ):
         self.installer = installer
         self.logger = logger
         self.progress_tracker = progress_tracker
         self.dry_run = dry_run
 
-    def install_packages(self, packages: List[str], tracker: Optional[OperationTracker] = None):
+    def install_packages(
+        self, packages: List[str], tracker: Optional[OperationTracker] = None
+    ):
         if not packages:
             return
 
@@ -55,9 +58,7 @@ class PackageService:
                     self.progress_tracker.update_progress(f"Failed: {pkg}")
 
             if success_count == len(packages):
-                console.print(
-                    "[green]System packages installed successfully.[/green]"
-                )
+                console.print("[green]System packages installed successfully.[/green]")
                 self.logger.info(f"Successfully installed packages: {packages}")
             else:
                 console.print(

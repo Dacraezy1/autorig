@@ -127,7 +127,9 @@ class AutoRig:
 
                 self.logger.debug("Starting system package installation")
                 status.update("[bold blue]Installing system packages...[/bold blue]")
-                self.package_service.install_packages(self.config.system.packages, tracker)
+                self.package_service.install_packages(
+                    self.config.system.packages, tracker
+                )
                 self.progress_tracker.update_progress("System packages installed")
 
                 # Execute post-system hooks
@@ -142,7 +144,9 @@ class AutoRig:
 
                 self.logger.debug("Starting git repository processing")
                 status.update("[bold blue]Processing git repositories...[/bold blue]")
-                await self.git_service.process_repositories(self.config.git.repositories, tracker)
+                await self.git_service.process_repositories(
+                    self.config.git.repositories, tracker
+                )
                 self.progress_tracker.update_progress("Git repositories processed")
 
                 # Execute post-git hooks
@@ -157,7 +161,9 @@ class AutoRig:
 
                 self.logger.debug("Starting dotfile linking")
                 status.update("[bold blue]Linking dotfiles...[/bold blue]")
-                self.dotfile_service.link_dotfiles(self.config.dotfiles, self.config.variables, tracker)
+                self.dotfile_service.link_dotfiles(
+                    self.config.dotfiles, self.config.variables, tracker
+                )
                 self.progress_tracker.update_progress("Dotfiles linked")
 
                 # Execute post-dotfile hooks

@@ -11,20 +11,23 @@ from logging import Logger
 
 console = Console()
 
+
 class GitService:
     def __init__(
         self,
         logger: Logger,
         progress_tracker: ProgressTracker,
         dry_run: bool = False,
-        verbose: bool = False
+        verbose: bool = False,
     ):
         self.logger = logger
         self.progress_tracker = progress_tracker
         self.dry_run = dry_run
         self.verbose = verbose
 
-    async def process_repositories(self, repos: List[GitRepo], tracker: Optional[OperationTracker] = None):
+    async def process_repositories(
+        self, repos: List[GitRepo], tracker: Optional[OperationTracker] = None
+    ):
         if not repos:
             self.logger.debug("No git repositories to process")
             return
@@ -39,7 +42,11 @@ class GitService:
         await asyncio.gather(*tasks)
 
     async def _clone_or_update_repo(
-        self, repo: GitRepo, index: int, total: int, tracker: Optional[OperationTracker] = None
+        self,
+        repo: GitRepo,
+        index: int,
+        total: int,
+        tracker: Optional[OperationTracker] = None,
     ):
         try:
             target_path = Path(os.path.expanduser(repo.path))
@@ -82,23 +89,17 @@ class GitService:
                 )
             self.progress_tracker.update_progress(f"Error: {repo.url}")
 
-    async def _update_repo(self, repo: GitRepo, target_path: Path, tracker: Optional[OperationTracker]):
+    async def _update_repo(
+        self, repo: GitRepo, target_path: Path, tracker: Optional[OperationTracker]
+    ):
         if (target_path / ".git").exists():
-            console.print(
-                f"[yellow]Path exists, updating:[/yellow] {repo.path}"
-            )
+            console.print(f"[yellow]Path exists, updating:[/yellow] {repo.path}")
             self.logger.info(f"Repository exists, updating: {repo.url}")
             if self.dry_run:
-                console.print(
-                    f"[yellow]DRY RUN: Would pull in {target_path}[/yellow]"
-                )
+                console.print(f"[yellow]DRY RUN: Would pull in {target_path}[/yellow]")
                 if tracker:
-                    tracker.record_change(
-                        "would_pull_repo", repo.path, url=repo.url
-                    )
-                self.progress_tracker.update_progress(
-                    f"Dry run: update {repo.url}"
-                )
+                    tracker.record_change("would_pull_repo", repo.path, url=repo.url)
+                self.progress_tracker.update_progress(f"Dry run: update {repo.url}")
                 return
 
             try:
@@ -115,17 +116,11 @@ class GitService:
                 if process.returncode == 0:
                     console.print(f"[green]Updated {repo.url}[/green]")
                     if self.verbose and stdout:
-                        console.print(
-                            f"[dim]Git output: {stdout.decode()}[/dim]"
-                        )
+                        console.print(f"[dim]Git output: {stdout.decode()}[/dim]")
                     self.logger.info(f"Updated git repo: {repo.url}")
                     if tracker:
-                        tracker.record_change(
-                            "updated_repo", repo.path, url=repo.url
-                        )
-                    self.progress_tracker.update_progress(
-                        f"Updated: {repo.url}"
-                    )
+                        tracker.record_change("updated_repo", repo.path, url=repo.url)
+                    self.progress_tracker.update_progress(f"Updated: {repo.url}")
                 else:
                     raise subprocess.CalledProcessError(
                         process.returncode or 1,
@@ -152,9 +147,7 @@ class GitService:
             console.print(
                 f"[yellow]Path exists but is not a git repository: {repo.path}[/yellow]"
             )
-            self.logger.warning(
-                f"Path exists but is not a git repository: {repo.path}"
-            )
+            self.logger.warning(f"Path exists but is not a git repository: {repo.path}")
             if tracker:
                 tracker.record_change(
                     "invalid_repo_path",
@@ -164,7 +157,9 @@ class GitService:
                 )
             self.progress_tracker.update_progress(f"Non-git path: {repo.path}")
 
-    async def _clone_repo(self, repo: GitRepo, target_path: Path, tracker: Optional[OperationTracker]):
+    async def _clone_repo(
+        self, repo: GitRepo, target_path: Path, tracker: Optional[OperationTracker]
+    ):
         console.print(f"Cloning {repo.url} to {repo.path}...")
         self.logger.info(f"Cloning repository: {repo.url} to {repo.path}")
         if self.dry_run:

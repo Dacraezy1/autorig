@@ -30,6 +30,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           # install dev deps if present; tolerate absence
           pip install -r requirements-dev.txt || true
+          pip install -e .
 
       - name: Run tests
         shell: bash

@@ -12,6 +12,7 @@ from logging import Logger
 
 console = Console()
 
+
 class DotfileService:
     def __init__(
         self,
@@ -20,7 +21,7 @@ class DotfileService:
         logger: Logger,
         progress_tracker: ProgressTracker,
         dry_run: bool = False,
-        force: bool = False
+        force: bool = False,
     ):
         self.config_path = config_path
         self.renderer = renderer
@@ -29,7 +30,12 @@ class DotfileService:
         self.dry_run = dry_run
         self.force = force
 
-    def link_dotfiles(self, dotfiles: List[Dotfile], variables: Dict, tracker: Optional[OperationTracker] = None):
+    def link_dotfiles(
+        self,
+        dotfiles: List[Dotfile],
+        variables: Dict,
+        tracker: Optional[OperationTracker] = None,
+    ):
         if not dotfiles:
             self.logger.debug("No dotfiles to link")
             return
@@ -106,7 +112,9 @@ class DotfileService:
 
                 # Check for template
                 if source.suffix == ".j2":
-                    self._render_template(source, target, config_dir, variables, df, tracker)
+                    self._render_template(
+                        source, target, config_dir, variables, df, tracker
+                    )
                     continue
 
                 # Link file
@@ -125,7 +133,9 @@ class DotfileService:
                     )
                 self.progress_tracker.update_progress(f"Error: {df.target}")
 
-    def _handle_existing_target(self, target: Path, tracker: Optional[OperationTracker]):
+    def _handle_existing_target(
+        self, target: Path, tracker: Optional[OperationTracker]
+    ):
         original_exists = target.exists() or target.is_symlink()
         original_is_symlink = target.is_symlink()
         original_path = (
@@ -178,19 +188,13 @@ class DotfileService:
                     if target.is_symlink():
                         target.unlink()
                     else:
-                        (
-                            target.unlink()
-                            if target.is_file()
-                            else shutil.rmtree(target)
-                        )
+                        (target.unlink() if target.is_file() else shutil.rmtree(target))
 
     def _render_template(self, source, target, config_dir, variables, df, tracker):
         try:
             # Render relative path from config_dir
             rel_source = source.relative_to(config_dir)
-            self.renderer.render(
-                str(rel_source), variables, target
-            )
+            self.renderer.render(str(rel_source), variables, target)
             console.print(f"[green]Rendered {target} from {source}[/green]")
             self.logger.info(f"Rendered template {source} to {target}")
             if tracker:
@@ -210,9 +214,7 @@ class DotfileService:
                     source=str(source),
                     error=str(e),
                 )
-            self.progress_tracker.update_progress(
-                f"Failed render: {df.target}"
-            )
+            self.progress_tracker.update_progress(f"Failed render: {df.target}")
 
     def _create_symlink(self, source, target, df, tracker):
         try:

@@ -11,13 +11,14 @@ from logging import Logger
 
 console = Console()
 
+
 class HookService:
     def __init__(
         self,
         logger: Logger,
         progress_tracker: ProgressTracker,
         dry_run: bool = False,
-        verbose: bool = False
+        verbose: bool = False,
     ):
         self.logger = logger
         self.progress_tracker = progress_tracker
@@ -70,7 +71,9 @@ class HookService:
                     console.print(f"[red]Error: {e.stderr}[/red]")
                 self.logger.error(f"Hook failed: {desc} - {e}")
 
-    def run_scripts(self, scripts: List[Script], tracker: Optional[OperationTracker] = None):
+    def run_scripts(
+        self, scripts: List[Script], tracker: Optional[OperationTracker] = None
+    ):
         if not scripts:
             self.logger.debug("No scripts to run")
             return
@@ -102,7 +105,10 @@ class HookService:
                 )
                 if tracker:
                     tracker.record_change(
-                        "would_execute_script", script.command, description=desc, cwd=cwd
+                        "would_execute_script",
+                        script.command,
+                        description=desc,
+                        cwd=cwd,
                     )
                 self.progress_tracker.update_progress(f"Dry run: {desc}")
                 continue
@@ -146,10 +152,7 @@ class HookService:
                 self.progress_tracker.update_progress(f"Failed: {desc}")
 
     def _run_command_safely(
-        self,
-        command: str,
-        cwd: Optional[str] = None,
-        capture_output: bool = True
+        self, command: str, cwd: Optional[str] = None, capture_output: bool = True
     ):
         """
         Execute a command safely, avoiding shell=True when possible.

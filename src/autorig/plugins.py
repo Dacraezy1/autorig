@@ -47,7 +47,7 @@ class PluginManager:
             entry_points = importlib.metadata.entry_points(group=group)
         except TypeError:
             # Fallback for older Python versions
-            entry_points = importlib.metadata.entry_points().get(group, [])
+            entry_points = importlib.metadata.entry_points().get(group, [])  # type: ignore
 
         for entry_point in entry_points:
             try:
