@@ -2,11 +2,13 @@
 Enhanced CLI utilities for AutoRig with better progress indicators and error handling.
 """
 
-import sys
 import os
 import traceback
-from typing import Optional, Any, Dict, List
+from typing import Any, Dict, List
 from pathlib import Path
+import shutil
+import time
+from datetime import datetime
 from rich.console import Console
 from rich.progress import (
     Progress, 
@@ -20,7 +22,6 @@ from rich.progress import (
 )
 from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
 from rich.rule import Rule
 from rich import box
 import typer
@@ -136,13 +137,13 @@ class ErrorHandler:
         
         if show_traceback:
             tb_lines = traceback.format_exc().split('\n')
-            error_content += f"\n[bold red]Traceback:[/bold red]\n"
+            error_content += "\n[bold red]Traceback:[/bold red]\n"
             for line in tb_lines[-10:]:  # Last 10 lines of traceback
                 if line.strip():
                     error_content += f"[dim]{line}[/dim]\n"
         
         # Add suggestions
-        error_content += f"\n[bold yellow]Suggestions:[/bold yellow]\n"
+        error_content += "\n[bold yellow]Suggestions:[/bold yellow]\n"
         for i, suggestion in enumerate(suggestions, 1):
             error_content += f"  {i}. {suggestion}\n"
         
@@ -298,7 +299,3 @@ class CommandTimer:
     def __exit__(self, exc_type, exc_val, exc_tb):
         duration = time.time() - self.start_time
         console.print(f"[dim]⏱️  {self.operation_name} completed in {format_duration(duration)}[/dim]")
-
-
-# Import time for the timer
-import time

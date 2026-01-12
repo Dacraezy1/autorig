@@ -1,5 +1,4 @@
 import os
-import shutil
 import difflib
 import asyncio
 from pathlib import Path

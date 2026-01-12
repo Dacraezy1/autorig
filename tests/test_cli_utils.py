@@ -1,8 +1,7 @@
 """Tests for enhanced CLI utilities."""
 
 import pytest
-from unittest.mock import Mock, patch
-from rich.console import Console
+from unittest.mock import patch
 from autorig.cli_utils import (
     ErrorHandler,
     EnhancedProgressTracker,

@@ -5,7 +5,7 @@ import tempfile
 import yaml
 import click
 from pathlib import Path
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 from autorig.templates import TemplateManager
 
 

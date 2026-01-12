@@ -1,17 +1,13 @@
-from typing import List, Optional
 from pathlib import Path
-import os
 import typer
 from rich.console import Console
 from rich.panel import Panel
 from .core import AutoRig
 from .cli_utils import (
     ErrorHandler, 
-    EnhancedProgressTracker, 
     InfoDisplay, 
     confirm_action,
     validate_config_exists,
-    format_duration,
     CommandTimer
 )
 
@@ -44,7 +40,6 @@ def completion(
     
     try:
         # Generate completion script using typer's built-in functionality
-        import os
         script_source = f"""
 import typer
 from autorig.cli import app
