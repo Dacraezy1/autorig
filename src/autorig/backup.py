@@ -118,11 +118,17 @@ class BackupManager:
                             continue
 
                         # Extract with safety
-                        tar.extract(
-                            member,
-                            path="/",
-                            filter="data" if sys.version_info >= (3, 12) else None,
-                        )
+                        if sys.version_info >= (3, 12):
+                            tar.extract(
+                                member,
+                                path="/",
+                                filter="data",
+                            )
+                        else:
+                            tar.extract(
+                                member,
+                                path="/",
+                            )
 
         console.print(f"[green]Restored files from {path}[/green]")
 

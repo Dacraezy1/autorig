@@ -3,11 +3,19 @@
 import pytest
 import tempfile
 import yaml
+import re
 from pathlib import Path
 from unittest.mock import patch, Mock
 from click.testing import CliRunner
 from typer.testing import CliRunner
 from autorig.cli import app
+
+
+def strip_ansi(text):
+    ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+    return ansi_escape.sub("", text)
+
+
 from autorig.templates import TemplateManager
 
 
@@ -276,10 +284,11 @@ class TestCLIHelpAndDocumentation:
         """Test apply command help."""
         result = self.runner.invoke(app, ["apply", "--help"], env={"NO_COLOR": "1"})
         assert result.exit_code == 0
-        assert "Apply a rig configuration" in result.stdout
-        assert "dry-run" in result.stdout
-        assert "verbose" in result.stdout
-        assert "force" in result.stdout
+        output = strip_ansi(result.stdout)
+        assert "Apply a rig configuration" in output
+        assert "dry-run" in output
+        assert "verbose" in output
+        assert "force" in output
 
     def test_template_help(self):
         """Test template command help."""
