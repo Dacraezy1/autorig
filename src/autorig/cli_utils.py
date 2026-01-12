@@ -64,7 +64,9 @@ class EnhancedProgressTracker:
         if self.progress:
             self.progress.stop()
 
-    def add_task(self, description: str, total: int = 100, **kwargs) -> Optional[TaskID]:
+    def add_task(
+        self, description: str, total: int = 100, **kwargs
+    ) -> Optional[TaskID]:
         """Add a new progress task."""
         if not self.progress:
             return None
@@ -72,7 +74,13 @@ class EnhancedProgressTracker:
         self.tasks[description] = task_id
         return task_id
 
-    def update(self, task_id: TaskID, advance: int = 1, description: Optional[str] = None, **kwargs):
+    def update(
+        self,
+        task_id: TaskID,
+        advance: int = 1,
+        description: Optional[str] = None,
+        **kwargs,
+    ):
         """Update a progress task."""
         if self.progress and task_id:
             self.progress.update(
@@ -83,7 +91,6 @@ class EnhancedProgressTracker:
         """Mark a task as complete."""
         if self.progress and task_id:
             self.progress.update(task_id, completed=self.progress.tasks[task_id].total)
-
 
 
 class ErrorHandler:

@@ -302,7 +302,10 @@ class TemplateManager:
 
     @classmethod
     def create_config_from_template(
-        cls, template_name: str, output_path: str, variables: Optional[Dict[str, str]] = None
+        cls,
+        template_name: str,
+        output_path: str,
+        variables: Optional[Dict[str, str]] = None,
     ) -> None:
         """Create a configuration file from a template."""
         import yaml

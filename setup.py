@@ -6,7 +6,7 @@ setup(
     author="Dacraezy1",
     author_email="younesaouzal18@gmail.com",
     description="A declarative development environment bootstrapper",
-    long_description=open("README.md").read(),
+    long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/Dacraezy1/autorig",
     packages=find_packages(where="src"),
