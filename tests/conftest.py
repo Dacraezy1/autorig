@@ -1,25 +1,16 @@
+import os
+import re
 import pytest
-import yaml
 
+@pytest.fixture(autouse=True)
+def disable_color_env():
+    """
+    Ensure colored output is disabled for all tests so help text assertions
+    (and other exact string checks) are deterministic regardless of environment.
+    """
+    os.environ.setdefault("NO_COLOR", "1")
+    yield
 
-@pytest.fixture
-def valid_config_data():
-    return {
-        "name": "Test Rig",
-        "variables": {"user": "testuser"},
-        "system": {"packages": ["git", "vim"]},
-        "git": {
-            "repositories": [
-                {"url": "https://github.com/test/repo.git", "path": "~/test/repo"}
-            ]
-        },
-        "dotfiles": [{"source": "bashrc", "target": "~/.bashrc"}],
-    }
-
-
-@pytest.fixture
-def config_file(tmp_path, valid_config_data):
-    p = tmp_path / "rig.yaml"
-    with open(p, "w") as f:
-        yaml.dump(valid_config_data, f)
-    return str(p)
+def strip_ansi(s: str) -> str:
+    """Optional helper to strip ANSI escape sequences in tests if needed."""
+    return re.sub(r"\x1b\[[0-9;]*m", "", s)
