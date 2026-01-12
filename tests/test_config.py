@@ -1,5 +1,25 @@
 import os
+import pytest
 from autorig.config import RigConfig
+
+
+@pytest.fixture
+def config_file(tmp_path):
+    content = """
+    name: "Test Rig"
+    variables:
+      user: "testuser"
+    system:
+      packages:
+        - git
+    git:
+      repositories:
+        - path: "~/test/repo"
+          url: "https://github.com/example/repo.git"
+    """
+    p = tmp_path / "test_rig.yaml"
+    p.write_text(content)
+    return str(p)
 
 
 def test_load_valid_config(config_file):

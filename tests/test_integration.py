@@ -244,11 +244,11 @@ def test_secure_command_validation():
         try:
             rig = AutoRig(f.name)
             # Test the validation function directly
-            assert rig._is_safe_command("echo hello")
-            assert not rig._is_safe_command("echo hello; rm -rf /")
-            assert not rig._is_safe_command("echo hello && rm -rf /")
-            assert not rig._is_safe_command("echo hello || rm -rf /")
-            assert not rig._is_safe_command("eval 'rm -rf /'")
+            assert rig.hook_service._is_safe_command("echo hello")
+            assert not rig.hook_service._is_safe_command("echo hello; rm -rf /")
+            assert not rig.hook_service._is_safe_command("echo hello && rm -rf /")
+            assert not rig.hook_service._is_safe_command("echo hello || rm -rf /")
+            assert not rig.hook_service._is_safe_command("eval 'rm -rf /'")
         finally:
             os.unlink(f.name)
 
