@@ -2,11 +2,12 @@
 Example plugin for Python development environment setup.
 """
 
-from .plugins import Plugin
-from .config import RigConfig
-from pathlib import Path
-import subprocess
 import os
+import subprocess
+from pathlib import Path
+
+from .config import RigConfig
+from .plugins import Plugin
 
 
 class PythonDevPlugin(Plugin):

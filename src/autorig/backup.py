@@ -1,12 +1,14 @@
-import tarfile
-import os
 import json
-from pathlib import Path
-from datetime import datetime
-from typing import Dict, Any
-from rich.console import Console
-from .config import RigConfig
+import os
 import sys
+import tarfile
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict
+
+from rich.console import Console
+
+from .config import RigConfig
 
 console = Console()
 

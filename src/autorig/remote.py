@@ -4,9 +4,10 @@ Remote configuration fetching and cloud integration for AutoRig.
 
 import os
 import tempfile
-import requests  # type: ignore[import-untyped]
 from pathlib import Path
 from urllib.parse import urlparse
+
+import requests  # type: ignore[import-untyped]
 from rich.console import Console
 
 console = Console()

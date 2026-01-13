@@ -1,22 +1,23 @@
-import os
-import difflib
 import asyncio
+import difflib
+import os
 from pathlib import Path
 from typing import List, Optional
+
 from rich.console import Console
+
+from .backup import BackupManager
 from .config import RigConfig
 from .installers.base import get_system_installer
-from .backup import BackupManager
-from .templating import TemplateRenderer
 from .logger import setup_logging
-from .plugins import plugin_manager
 from .notifications import NotificationManager, ProgressTracker
-from .state import StateManager, OperationTracker
-
-from .services.package_service import PackageService
-from .services.git_service import GitService
+from .plugins import plugin_manager
 from .services.dotfile_service import DotfileService
+from .services.git_service import GitService
 from .services.hook_service import HookService
+from .services.package_service import PackageService
+from .state import OperationTracker, StateManager
+from .templating import TemplateRenderer
 
 console = Console()
 
@@ -351,9 +352,10 @@ class AutoRig:
 
     def watch(self):
         """Monitor config file for changes."""
-        from watchdog.observers import Observer
-        from watchdog.events import FileSystemEventHandler
         import time
+
+        from watchdog.events import FileSystemEventHandler
+        from watchdog.observers import Observer
 
         class ConfigHandler(FileSystemEventHandler):
             def __init__(self, rigger):

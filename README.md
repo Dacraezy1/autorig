@@ -1,11 +1,28 @@
-# AutoRig 🚀 v1.0.0 - Major Release
+# AutoRig 🚀 v1.1.0 - Enhanced Release
 
-**AutoRig** is a robust, data-driven system configuration and dotfile manager written in Python. It automates the setup of a development environment by installing system packages, managing git repositories, linking dotfiles, and running custom scripts. v1.0.0 introduces a comprehensive set of new features making it the most advanced configuration management tool available.
+**AutoRig** is a robust, data-driven system configuration and dotfile manager written in Python. It automates the setup of a development environment by installing system packages, managing git repositories, linking dotfiles, and running custom scripts. v1.1.0 introduces dependency visualization, multi-user support, and performance optimizations.
 
 [![License](https://img.shields.io/github/license/Dacraezy1/autorig.svg)](https://github.com/Dacraezy1/autorig/blob/main/LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-informational.svg)](https://github.com/Dacraezy1/autorig)
-[![Version](https://img.shields.io/badge/Version-1.0.0-brightgreen.svg)](https://github.com/Dacraezy1/autorig/releases/latest)
+[![Version](https://img.shields.io/badge/Version-1.1.0-brightgreen.svg)](https://github.com/Dacraezy1/autorig/releases/latest)
+[![New in v1.1.0](https://img.shields.io/badge/New%20in%20v1.1.0-purple.svg)](https://github.com/Dacraezy1/autorig/releases/latest)
+
+---
+
+## 📚 Quick Reference
+
+| Feature | Command | Description |
+|---------|---------|-------------|
+| Apply config | `autorig apply` | Install packages, link files, run scripts |
+| View dependencies | `autorig graph` | Visualize configuration relationships |
+| Multi-user setup | `autorig user` | Manage team/shared configs |
+| Status check | `autorig status` | Check configuration state |
+| Backup | `autorig backup` | Create dotfile snapshots |
+| Template | `autorig template` | List/use configuration templates |
+| Detect profile | `autorig detect` | Auto-detect environment |
+
+---
 
 ## ✨ Features
 
@@ -34,6 +51,9 @@
 - **🔄 Error Recovery & Rollback**: Automatic state tracking with rollback capabilities to revert changes on failure.
 - **📈 Monitoring & Reporting**: Real-time resource monitoring and status reporting with system resource usage tracking.
 - **📋 Configuration Schema Validation**: JSON schema validation for configuration files to catch errors early.
+- **📊 Dependency Graph Visualization**: Visualize configuration dependencies and relationships with multiple output formats (tree, Mermaid, JSON). Helps understand configuration structure and optimize setup.
+- **👥 Multi-User Support**: Team collaboration with user-specific configurations, shared repository, and configuration locking. Enables personal customization without modifying base configs.
+- **⚡ Optimized Performance**: Cached resource monitoring and lazy loading for faster startup and reduced system calls.
 
 ## 📋 Requirements
 
@@ -242,6 +262,54 @@ autorig detect
 autorig detect --verbose  # Show detailed environment information
 autorig detect --detailed  # Show comprehensive environment details with recommendations
 ```
+
+#### Dependency Graph Visualization
+Visualize dependencies and relationships in your configuration:
+
+```bash
+# View as interactive tree (default)
+autorig graph config.yaml
+
+# Export as Mermaid graph for documentation
+autorig graph config.yaml --format mermaid --output graph.mmd
+
+# Export as JSON for programmatic analysis
+autorig graph config.yaml --format mermaid --output dependencies.json
+
+# Show summary table
+autorig graph config.yaml --format summary
+
+# With profile support
+autorig graph config.yaml --profile linux-workstation --output graph.json
+```
+
+**Output Formats:**
+- `tree`: Interactive tree view of configuration structure
+- `mermaid`: Mermaid.js compatible graph for documentation tools
+- `summary`: Tabular summary of components and dependencies
+
+#### Multi-User Configuration
+Manage user-specific and shared configurations for team collaboration:
+
+```bash
+# Initialize user-specific config from base config
+autorig user init config.yaml --user john
+
+# List all user and shared configurations
+autorig user list
+
+# Show user information and available configs
+autorig user info
+
+# Remove user-specific configuration
+autorig user remove --user john
+```
+
+**Features:**
+- User-specific overrides without modifying base configuration
+- Shared configuration repository for team setups
+- Configuration locking to prevent concurrent conflicts
+- Automatic configuration merging
 
 ## ⚙️ Configuration (`rig.yaml`)
 

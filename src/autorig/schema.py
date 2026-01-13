@@ -2,7 +2,7 @@
 JSON Schema for AutoRig configuration validation.
 """
 
-from typing import Dict, Any
+from typing import Any, Dict
 
 
 def get_config_schema() -> Dict[str, Any]:

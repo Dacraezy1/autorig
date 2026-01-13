@@ -1,15 +1,17 @@
 from pathlib import Path
+
 import typer
 from rich.console import Console
 from rich.panel import Panel
-from .core import AutoRig
+
 from .cli_utils import (
+    CommandTimer,
     ErrorHandler,
     InfoDisplay,
     confirm_action,
     validate_config_exists,
-    CommandTimer,
 )
+from .core import AutoRig
 
 app = typer.Typer(
     help="""
@@ -176,8 +178,9 @@ def apply(
     - Execute custom post-install scripts
     """
     try:
-        from .remote import resolve_config_path
         import asyncio
+
+        from .remote import resolve_config_path
 
         # Validate configuration exists
         config_path = validate_config_exists(config)
@@ -511,8 +514,9 @@ def sync(
     Push local changes in git repositories to remotes.
     """
     try:
-        from .remote import resolve_config_path
         import asyncio
+
+        from .remote import resolve_config_path
 
         local_config_path = resolve_config_path(config)
         rig = AutoRig(
@@ -590,9 +594,9 @@ def export(
 ):
     """Export configuration to different formats."""
     try:
-        from .remote import resolve_config_path
         from .config import RigConfig
         from .exporters.devcontainer import DevContainerExporter
+        from .remote import resolve_config_path
 
         local_config_path = resolve_config_path(config)
         exporter = DevContainerExporter(
@@ -712,6 +716,156 @@ def report(
 
 
 @app.command(
+    help="Visualize dependency relationships in the configuration.",
+    short_help="Show dependency graph",
+)
+def graph(
+    config: str = typer.Argument(..., help="Path to rig.yaml config file"),
+    output: str = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Export graph to file (supports .json and .mermaid formats)",
+    ),
+    profile: str = typer.Option(
+        None, "--profile", "-p", help="Use a specific profile configuration"
+    ),
+    format: str = typer.Option(
+        "tree", "--format", "-f", help="Output format (tree, mermaid, summary)"
+    ),
+):
+    """
+    Visualize dependency relationships in the configuration.
+
+    This command shows how different components of your configuration relate to each other,
+    helping you understand dependencies and optimize your setup.
+    """
+    try:
+        from .config import RigConfig
+        from .dependency_graph import DependencyAnalyzer
+        from .remote import resolve_config_path
+
+        local_config_path = resolve_config_path(config)
+        config_data = RigConfig.from_yaml(local_config_path, profile)
+
+        analyzer = DependencyAnalyzer(config_data)
+
+        if format == "tree":
+            tree = analyzer.generate_tree_view()
+            console.print(tree)
+        elif format == "mermaid":
+            mermaid_graph = analyzer.generate_mermaid_graph()
+            console.print(f"[bold]Mermaid Graph:[/bold]\n{mermaid_graph}")
+        elif format == "summary":
+            analyzer.print_summary()
+        else:
+            console.print(f"[red]Unsupported format: {format}[/red]")
+            console.print("Available formats: tree, mermaid, summary")
+            raise typer.Exit(code=1)
+
+        if output:
+            ext = Path(output).suffix
+            export_format = "json" if ext == ".json" else "mermaid"
+            analyzer.export_to_file(output, export_format)
+            console.print(f"[green]Graph exported to: {output}[/green]")
+
+    except Exception as e:
+        console.print(f"[bold red]Error generating dependency graph:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
+# Multi-user commands
+multiuser_app = typer.Typer(help="Manage multi-user configurations", name="user")
+app.add_typer(multiuser_app)
+
+
+@multiuser_app.command("init", help="Initialize user-specific configuration")
+def user_init(
+    config: str = typer.Argument(..., help="Path to base configuration file"),
+    username: str = typer.Option(
+        None, "--user", "-u", help="Username (defaults to current user)"
+    ),
+):
+    """Create a user-specific configuration based on a base config."""
+    try:
+        from .multiuser import MultiUserManager
+
+        manager = MultiUserManager(config)
+        manager.create_user_config(config, username)
+    except Exception as e:
+        console.print(f"[bold red]Error initializing user config:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
+@multiuser_app.command("list", help="List all user and shared configurations")
+def user_list():
+    """List all user and shared configurations."""
+    try:
+        from rich.table import Table
+
+        from .multiuser import MultiUserManager
+
+        manager = MultiUserManager(".")
+
+        table = Table(title="Configurations")
+        table.add_column("Type", style="cyan")
+        table.add_column("Name", style="magenta")
+        table.add_column("Location", style="dim")
+
+        user_configs = manager.list_user_configs()
+        for username, path in user_configs.items():
+            table.add_row("User", username, str(path))
+
+        shared_configs = manager.list_shared_configs()
+        for name, path in shared_configs.items():
+            table.add_row("Shared", name, str(path))
+
+        if not user_configs and not shared_configs:
+            console.print("[yellow]No configurations found[/yellow]")
+        else:
+            console.print(table)
+    except Exception as e:
+        console.print(f"[bold red]Error listing configurations:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
+@multiuser_app.command("info", help="Show multi-user information")
+def user_info():
+    """Show information about current user and available configurations."""
+    try:
+        from .multiuser import MultiUserManager
+
+        manager = MultiUserManager(".")
+        manager.print_user_info()
+    except Exception as e:
+        console.print(f"[bold red]Error showing user info:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
+@multiuser_app.command("remove", help="Remove user-specific configuration")
+def user_remove(
+    username: str = typer.Option(
+        None, "--user", "-u", help="Username (defaults to current user)"
+    ),
+):
+    """Remove a user-specific configuration."""
+    try:
+        from .multiuser import MultiUserManager
+
+        manager = MultiUserManager(".")
+        if not typer.confirm(
+            "Are you sure you want to remove the user configuration?", default=False
+        ):
+            console.print("[yellow]Operation cancelled[/yellow]")
+            raise typer.Exit(code=0)
+
+        manager.remove_user_config(username)
+    except Exception as e:
+        console.print(f"[bold red]Error removing user config:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
+@app.command(
     help="Download and work with remote configurations (GitHub, GitLab, HTTP).",
     short_help="Work with remote configs",
 )
@@ -741,8 +895,9 @@ def remote(
     """
     local_path = None
     try:
-        from .remote import RemoteConfigManager
         import os
+
+        from .remote import RemoteConfigManager
 
         console.print(f"[blue]Fetching remote configuration:[/blue] {url}")
 
@@ -796,8 +951,9 @@ def remote(
             raise ValueError(f"Failed to fetch remote configuration from: {url}")
 
         # Execute the requested command
-        from .core import AutoRig
         import asyncio
+
+        from .core import AutoRig
 
         if command == "apply":
             rig = AutoRig(

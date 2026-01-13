@@ -1,12 +1,15 @@
-from typing import List, Optional, Dict, Any
 import os
 import re
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, field_validator, model_validator
+
 from .profiles import load_profile_config
 
 try:
-    from .schema import get_config_schema
     import jsonschema  # type: ignore[import-untyped]
+
+    from .schema import get_config_schema
 
     SCHEMA_AVAILABLE = True
 except ImportError:

@@ -2,6 +2,34 @@
 
 All notable changes to AutoRig will be documented in this file.
 
+## [1.1.0] - 2025-01-14
+
+### Added
+
+#### New Features
+- **Dependency Graph Visualization**: New command `autorig graph` to visualize configuration dependencies with tree, Mermaid, and JSON export formats
+- **Multi-User Support**: New `autorig user` command group for team collaboration with user-specific configs and shared configuration repository
+- **Configuration Locking**: Lock files to prevent concurrent configuration conflicts in multi-user scenarios
+
+#### Improvements
+- **Modular Architecture**: Extracted git and package operations into dedicated service modules for better separation of concerns
+- **Performance Optimizations**:
+  - Added caching layer to resource monitoring (configurable intervals, default 1s)
+  - Implemented lazy loading for optional dependencies
+  - Cached environment detection results
+  - Reduced CPU monitoring interval from 0.05s to 0.1s
+- **Startup Time**: Deferred loading of expensive imports and modules, reducing CLI startup time
+- **Code Quality**:
+  - Applied ruff linting across all files
+  - Formatted all code with black
+  - Sorted imports with isort
+  - Added common utilities module (utils.py)
+
+#### Changed
+- Updated README.md with v1.1.0 features and commands
+- Enhanced CLI with new `graph` command and `user` subcommand group
+- All existing functionality remains backward compatible
+
 ## [1.0.0] - 2025-01-20
 
 ### Major Release - Complete Rewrite with Advanced Features

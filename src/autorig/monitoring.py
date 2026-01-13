@@ -2,14 +2,16 @@
 Monitoring and status reporting for AutoRig operations.
 """
 
-import psutil  # type: ignore[import-untyped]
 import time
-from datetime import datetime
-from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+import psutil  # type: ignore[import-untyped]
 from rich.console import Console
-from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.table import Table
+
 from .config import RigConfig
 
 
@@ -25,26 +27,52 @@ class SystemResourceUsage:
 
 class ResourceMonitor:
     """
-    Monitors system resources during AutoRig operations.
+    Monitors system resources during AutoRig operations with caching for efficiency.
     """
 
-    def __init__(self):
+    def __init__(self, cache_seconds: float = 1.0):
         self.initial_network = psutil.net_io_counters()
         self.initial_network_sent = self.initial_network.bytes_sent
         self.initial_network_recv = self.initial_network.bytes_recv
         self.resource_history: List[SystemResourceUsage] = []
+        self.cache_seconds = cache_seconds
+        self._cached_usage: Optional[SystemResourceUsage] = None
+        self._cache_time: float = 0.0
+        self._cached_memory: Optional[psutil._common.svmem] = None
+        self._cached_disk: Optional[psutil._common.sdiskusage] = None
+        self._cache_memory_time: float = 0.0
+        self._cache_disk_time: float = 0.0
 
     def get_current_usage(self) -> SystemResourceUsage:
-        """Get current system resource usage."""
+        """Get current system resource usage with caching."""
+        current_time = time.time()
+
+        if self._cached_usage and current_time - self._cache_time < self.cache_seconds:
+            return self._cached_usage
+
         net_current = psutil.net_io_counters()
-        return SystemResourceUsage(
-            cpu_percent=psutil.cpu_percent(interval=0.1),
-            memory_percent=psutil.virtual_memory().percent,
-            disk_percent=psutil.disk_usage("/").percent,
+
+        # Cache expensive operations
+        if current_time - self._cache_memory_time > self.cache_seconds:
+            self._cached_memory = psutil.virtual_memory()
+            self._cache_memory_time = current_time
+
+        if current_time - self._cache_disk_time > self.cache_seconds:
+            self._cached_disk = psutil.disk_usage("/")
+            self._cache_disk_time = current_time
+
+        usage = SystemResourceUsage(
+            cpu_percent=psutil.cpu_percent(interval=0.05),
+            memory_percent=self._cached_memory.percent if self._cached_memory else 0,
+            disk_percent=self._cached_disk.percent if self._cached_disk else 0,
             network_sent=net_current.bytes_sent - self.initial_network_sent,
             network_recv=net_current.bytes_recv - self.initial_network_recv,
             timestamp=datetime.now(),
         )
+
+        self._cached_usage = usage
+        self._cache_time = current_time
+        return usage
 
     def start_monitoring(self):
         """Start resource monitoring."""
@@ -55,17 +83,12 @@ class ResourceMonitor:
         if not self.resource_history:
             return self.get_current_usage()
 
-        avg_cpu = sum([r.cpu_percent for r in self.resource_history]) / len(
-            self.resource_history
-        )
-        avg_memory = sum([r.memory_percent for r in self.resource_history]) / len(
-            self.resource_history
-        )
-        avg_disk = sum([r.disk_percent for r in self.resource_history]) / len(
-            self.resource_history
-        )
-        total_sent = max([r.network_sent for r in self.resource_history])
-        total_recv = max([r.network_recv for r in self.resource_history])
+        history_len = len(self.resource_history)
+        avg_cpu = sum(r.cpu_percent for r in self.resource_history) / history_len
+        avg_memory = sum(r.memory_percent for r in self.resource_history) / history_len
+        avg_disk = sum(r.disk_percent for r in self.resource_history) / history_len
+        total_sent = max(r.network_sent for r in self.resource_history)
+        total_recv = max(r.network_recv for r in self.resource_history)
 
         return SystemResourceUsage(
             cpu_percent=avg_cpu,

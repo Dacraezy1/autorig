@@ -3,27 +3,28 @@ Enhanced CLI utilities for AutoRig with better progress indicators and error han
 """
 
 import os
-import traceback
-from typing import Any, Dict, List, Optional
-from pathlib import Path
 import time
+import traceback
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import typer
+from rich import box
 from rich.console import Console
+from rich.panel import Panel
 from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
     Progress,
     SpinnerColumn,
-    TextColumn,
-    BarColumn,
+    TaskID,
     TaskProgressColumn,
+    TextColumn,
     TimeElapsedColumn,
     TimeRemainingColumn,
-    MofNCompleteColumn,
-    TaskID,
 )
-from rich.panel import Panel
-from rich.table import Table
 from rich.rule import Rule
-from rich import box
-import typer
+from rich.table import Table
 
 console = Console()
 

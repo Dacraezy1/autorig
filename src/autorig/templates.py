@@ -3,12 +3,13 @@ Template generator for common development setups.
 """
 
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
+import typer
+from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich import box
-import typer
 
 console = Console()
 

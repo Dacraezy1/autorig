@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "autorig"
-version = "1.0.0"
+version = "1.1.0"
 description = "A declarative development environment bootstrapper"
 authors = [
   { name = "Dacraezy1", email = "younesaouzal18@gmail.com" },

@@ -1,5 +1,6 @@
-from typing import Any, Dict
 from pathlib import Path
+from typing import Any, Dict
+
 from jinja2 import Environment, FileSystemLoader
 
 

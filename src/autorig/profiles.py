@@ -7,18 +7,25 @@ import platform
 import socket
 import subprocess
 from pathlib import Path
-from typing import Dict, Optional, Any, List
+from typing import Any, Dict, List, Optional
 
 import yaml  # type: ignore[import-untyped]
 
 
 class EnvironmentDetector:
     """
-    Detects the current environment and system characteristics.
+    Detects the current environment and system characteristics with caching.
     """
 
-    def __init__(self):
-        self.env_info = self._collect_environment_info()
+    _cached_info: Optional[Dict[str, Any]] = None
+
+    def __init__(self, use_cache: bool = True):
+        if use_cache and EnvironmentDetector._cached_info is not None:
+            self.env_info = EnvironmentDetector._cached_info
+        else:
+            self.env_info = self._collect_environment_info()
+            if use_cache:
+                EnvironmentDetector._cached_info = self.env_info
 
     def _collect_environment_info(self) -> Dict[str, Any]:
         """Collect information about the current environment."""
